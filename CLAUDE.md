@@ -3,6 +3,12 @@
 React + TanStack Start (SSR) frontend that also serves as the BFF (ADR-4/ADR-5).
 Runtime/package manager: **Bun**. See `README.md` for how to run.
 
+## Coding standards
+
+When writing or reviewing **any** TypeScript or React code in this repo, follow the standards in:
+
+@docs/coding-standards/react-typescript.md
+
 ## PR explainers (required for every PR)
 
 The maintainer is learning React and TanStack, so **every PR gets a plain-language
