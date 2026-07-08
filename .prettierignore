@@ -1,0 +1,11 @@
+bun.lock
+node_modules
+dist
+.output
+.vinxi
+.tanstack
+playwright-report
+test-results
+src/routeTree.gen.ts
+# Markdown (incl. the coding-standards doc) is hand-formatted; don't reflow it.
+**/*.md
