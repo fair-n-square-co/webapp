@@ -1,0 +1,54 @@
+# webapp
+
+Fair n Square frontend — **React + TanStack Start** (SSR), which also serves as the
+**BFF**: it holds the WorkOS session and calls the Go services over connectRPC
+(ADR-4 / ADR-5). This is the re-scaffold off SvelteKit (ADR-5).
+
+**Stack:** Bun · TanStack Start (SSR) + TanStack Router (file-based routes) · Vite 8 ·
+TypeScript (strict) · React 19
+
+## Develop
+
+```sh
+bun install
+bun run dev        # http://localhost:3000  (SSR + HMR)
+```
+
+Routes live in `src/routes/`, shared UI in `src/components/`.
+
+| Script | What |
+| --- | --- |
+| `bun run dev` | Dev server (SSR) on :3000 |
+| `bun run build` | Production client + server build → `dist/` |
+| `bun run typecheck` | `tsc --noEmit` (strict) |
+| `bun run lint` | ESLint (type-aware + Rules of Hooks) |
+| `bun run format:check` | Prettier check |
+| `bun run test` | Vitest — components (jsdom, RTL, MSW) |
+| `bun run test:e2e` | Playwright — SSR + hydration against the real app |
+
+`bun install` installs a pre-commit hook that keeps the generated route tree in sync.
+Conventions, testing strategy, and architecture rules live in [`AGENTS.md`](./AGENTS.md);
+code style lives in [`docs/coding-standards/react-typescript.md`](./docs/coding-standards/react-typescript.md).
+
+## Endpoints
+
+- `/` — walking-skeleton landing page.
+- `/healthz` — liveness for the ALB target group (200 = server up + SSR renders).
+
+## Docker
+
+```sh
+docker build -t fns-webapp .
+docker run -p 3000:3000 fns-webapp
+```
+
+The image runs the **dev server** — "good enough for docker-compose" local bring-up
+(FNS-90). A production multi-stage build with proper SSR client-asset serving is
+**FNS-111**: `bun run build` emits a Web `fetch` handler (`dist/server/server.js`)
+that needs a hosting adapter to inject the client manifest and serve `dist/client`.
+
+## Roadmap (this scaffold = FNS-138)
+
+- **FNS-91** — WorkOS AuthKit login + session in the BFF.
+- **FNS-94** — profile view/edit/preferences, consuming `authx.ProfileService` (FNS-93, done).
+- **FNS-111** — production multi-stage Docker build + SSR asset serving.

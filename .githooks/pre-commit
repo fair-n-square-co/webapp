@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# Refuse a commit whose generated files are stale.
+#
+# src/routeTree.gen.ts is written by the TanStack Start plugin during `vite dev`
+# and `vite build`, and it is committed (see .gitattributes) so a fresh clone can
+# typecheck without building first. That only holds while the committed copy
+# matches the route files on disk. So: regenerate, then refuse if what is staged
+# differs from what the generator just produced.
+#
+# CI enforces the same invariant; this hook is the fast local version of it.
+# Bypass with `SKIP_HOOKS=1 git commit` or `git commit --no-verify`.
+
+set -e
+
+[ "$SKIP_HOOKS" = "1" ] && exit 0
+
+ROUTE_TREE="src/routeTree.gen.ts"
+
+# Only pay for a build when the commit could actually change the route tree.
+# Route files define it; vite.config.ts configures the generator.
+if ! git diff --cached --name-only --diff-filter=ACMRD |
+	grep -Eq "^(src/routes/|vite\.config\.ts$|${ROUTE_TREE}$)"; then
+	exit 0
+fi
+
+if ! command -v bun >/dev/null 2>&1; then
+	echo "pre-commit: bun not found on PATH; cannot verify ${ROUTE_TREE}." >&2
+	exit 1
+fi
+
+echo "pre-commit: regenerating ${ROUTE_TREE}…"
+if ! build_output=$(bun run build 2>&1); then
+	echo "$build_output" >&2
+	echo "pre-commit: build failed, so ${ROUTE_TREE} could not be verified." >&2
+	exit 1
+fi
+
+# A file that is generated but never staged would leave the repo unbuildable on a
+# fresh clone, and `git diff` alone would not notice: it says nothing about paths
+# absent from the index.
+if ! git ls-files --error-unmatch "$ROUTE_TREE" >/dev/null 2>&1; then
+	echo "pre-commit: ${ROUTE_TREE} is generated but untracked." >&2
+	echo "            Run: git add ${ROUTE_TREE}" >&2
+	exit 1
+fi
+
+# Worktree (just regenerated) vs index (what is about to be committed).
+if ! git diff --quiet -- "$ROUTE_TREE"; then
+	echo >&2
+	echo "pre-commit: ${ROUTE_TREE} is stale — you added or renamed a route" >&2
+	echo "            without committing the regenerated tree." >&2
+	echo >&2
+	echo "            It has been rebuilt for you. Stage it and commit again:" >&2
+	echo >&2
+	echo "              git add ${ROUTE_TREE}" >&2
+	echo >&2
+	exit 1
+fi
+
+echo "pre-commit: ${ROUTE_TREE} is up to date."

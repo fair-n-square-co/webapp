@@ -1,0 +1,15 @@
+node_modules
+dist
+.output
+.nitro
+.tanstack
+.git
+.gitignore
+src/routeTree.gen.ts
+*.local
+.env
+.env.*
+.DS_Store
+Dockerfile
+.dockerignore
+README.md
