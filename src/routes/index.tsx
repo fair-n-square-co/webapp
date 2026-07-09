@@ -1,16 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Home } from '../components/Home'
 
+// A route file should export only `Route`. Anything else it exports is pulled out
+// of the route's lazy chunk, and the router warns about it. Keeping the component
+// in `components/` also keeps it free of route/data coupling and directly testable.
 export const Route = createFileRoute('/')({
   component: Home,
 })
-
-export function Home() {
-  return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '3rem', maxWidth: 640 }}>
-      <h1 style={{ margin: 0 }}>
-        fair <em>n</em> square
-      </h1>
-      <p style={{ color: '#52645e' }}>webapp walking skeleton — React + TanStack Start (BFF).</p>
-    </main>
-  )
-}

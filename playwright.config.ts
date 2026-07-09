@@ -4,6 +4,8 @@ import { defineConfig } from '@playwright/test'
 // `bunx playwright install` for browsers before the first run.
 export default defineConfig({
   testDir: './e2e',
+  // A stray `.only` would otherwise green CI while skipping every other test.
+  forbidOnly: !!process.env['CI'],
   use: { baseURL: 'http://localhost:3000' },
   webServer: {
     command: 'bun run dev',

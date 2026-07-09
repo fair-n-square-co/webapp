@@ -3,7 +3,8 @@ node_modules/
 .nitro/
 .tanstack/
 dist/
-src/routeTree.gen.ts
+playwright-report/
+test-results/
 *.local
 .env
 .env.*

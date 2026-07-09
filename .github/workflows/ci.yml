@@ -9,7 +9,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
@@ -17,10 +17,20 @@ jobs:
       - run: bun run format:check
       - run: bun run test
 
+      # Also regenerates src/routeTree.gen.ts through the TanStack Start plugin.
+      - run: bun run build
+
+      - name: Verify the committed route tree is up to date
+        run: |
+          if ! git diff --exit-code -- src/routeTree.gen.ts; then
+            echo "::error file=src/routeTree.gen.ts::Route tree is stale. Run 'bun run build' and commit src/routeTree.gen.ts."
+            exit 1
+          fi
+
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
