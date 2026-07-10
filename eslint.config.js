@@ -40,6 +40,14 @@ export default tseslint.config(
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
+      // `throw redirect({ to: '…' })` is how TanStack Router unwinds a loader or
+      // server function into a redirect. Everything else must still be an Error.
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        {
+          allow: [{ from: 'package', package: '@tanstack/router-core', name: 'Redirect' }],
+        },
+      ],
     },
   },
 )

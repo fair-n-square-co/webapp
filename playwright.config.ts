@@ -11,5 +11,14 @@ export default defineConfig({
     command: 'bun run dev',
     port: 3000,
     reuseExistingServer: !process.env['CI'],
+    // Placeholders, not credentials. The auth specs only exercise paths that stay
+    // inside the BFF: building the authorize URL is pure string work, and the
+    // callback specs are rejected on `state` before any WorkOS call is made.
+    env: {
+      WORKOS_API_KEY: 'sk_test_placeholder',
+      WORKOS_CLIENT_ID: 'client_placeholder',
+      WORKOS_COOKIE_PASSWORD: 'placeholder-cookie-password-32-chars',
+      WORKOS_REDIRECT_URI: 'http://localhost:3000/auth/callback',
+    },
   },
 })
