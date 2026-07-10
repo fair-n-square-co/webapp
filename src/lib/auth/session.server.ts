@@ -24,14 +24,21 @@ export type Session = Readonly<{
   user: User
 }>
 
-let client: WorkOS | undefined
+let cached: { credentials: string; client: WorkOS } | undefined
 
+/**
+ * The client is reused rather than rebuilt per request because each instance
+ * caches the WorkOS JWKS used to verify access tokens. It is keyed on the
+ * credentials so that rotating them takes effect on the next request.
+ */
 export function getWorkOS(): WorkOS {
-  if (!client) {
-    const { apiKey, clientId } = getWorkOSConfig()
-    client = new WorkOS(apiKey, { clientId })
+  const { apiKey, clientId } = getWorkOSConfig()
+  const credentials = `${apiKey}:${clientId}`
+
+  if (cached?.credentials !== credentials) {
+    cached = { credentials, client: new WorkOS(apiKey, { clientId }) }
   }
-  return client
+  return cached.client
 }
 
 // `secure` would make the cookie undeliverable over plain-HTTP localhost, where
@@ -89,19 +96,28 @@ export async function getSession(): Promise<Session | null> {
     cookiePassword,
   })
 
-  const authenticated = await sealed.authenticate()
-  if (authenticated.authenticated) {
-    return { accessToken: authenticated.accessToken, user: authenticated.user }
-  }
+  try {
+    const authenticated = await sealed.authenticate()
+    if (authenticated.authenticated) {
+      return { accessToken: authenticated.accessToken, user: authenticated.user }
+    }
 
-  const refreshed = await sealed.refresh({ cookiePassword })
-  if (!refreshed.authenticated || !refreshed.sealedSession || !refreshed.session) {
+    const refreshed = await sealed.refresh({ cookiePassword })
+    if (!refreshed.authenticated || !refreshed.sealedSession || !refreshed.session) {
+      clearSessionCookie()
+      return null
+    }
+
+    setSessionCookie(refreshed.sealedSession)
+    return { accessToken: refreshed.session.accessToken, user: refreshed.user }
+  } catch {
+    // Unsealing throws outright on a tampered cookie, or on one sealed with a
+    // since-rotated password — unlike every other failure here, which comes back
+    // as a structured result. A visitor holding an unreadable cookie is simply
+    // not signed in; discard it rather than serving them a 500 forever.
     clearSessionCookie()
     return null
   }
-
-  setSessionCookie(refreshed.sealedSession)
-  return { accessToken: refreshed.session.accessToken, user: refreshed.user }
 }
 
 /** Same as {@link getSession}, but redirects anonymous callers to the login route. */
