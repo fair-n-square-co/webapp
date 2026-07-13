@@ -10,15 +10,22 @@ TypeScript (strict) · React 19
 ## Develop
 
 ```sh
+export GITHUB_TOKEN=...   # a PAT with `read:packages` — see below
 bun install
-cp .env.example .env   # then fill in the WorkOS values
-bun run dev            # http://localhost:3000  (SSR + HMR)
+cp .env.example .env      # then fill in the WorkOS values
+bun run dev               # http://localhost:3000  (SSR + HMR)
 ```
+
+The generated API clients ship as `@fair-n-square-co/apis` on GitHub Packages, which is
+private, so `bun install` needs `GITHUB_TOKEN` set to a PAT with `read:packages` — without
+it the install 401s. [`.npmrc`](./.npmrc) points the scope at that registry and reads the
+token from the environment, so no credential is ever committed.
 
 Routes live in `src/routes/`, shared UI in `src/components/`.
 
-The auth routes need the `WORKOS_*` variables in [`.env.example`](./.env.example); the rest
-of the app runs without them, since the config is read per-request rather than at boot.
+The auth routes need the `WORKOS_*` and `AUTH_SERVICE_BASE_URL` variables in
+[`.env.example`](./.env.example); the rest of the app runs without them, since the config is
+read per-request rather than at boot.
 
 | Script | What |
 | --- | --- |
@@ -42,7 +49,8 @@ code style lives in [`docs/coding-standards/react-typescript.md`](./docs/coding-
 Auth (server-only handlers; no client bundle, no component):
 
 - `GET /auth/login` — issues an OAuth `state` cookie, redirects to WorkOS AuthKit (Google).
-- `GET /auth/callback` — verifies `state`, exchanges the code, seals the session cookie.
+- `GET /auth/callback` — verifies `state`, exchanges the code, provisions the canonical
+  user, then seals the session cookie.
 - `POST /auth/logout` — clears the session cookie, redirects to the WorkOS logout URL.
   POST, not GET: a GET logout is CSRF-able and gets triggered by link prefetchers.
 
@@ -50,12 +58,23 @@ The browser only ever holds an opaque, sealed, `httpOnly` cookie. It is unsealed
 on the server, which is where the WorkOS access token is read before being forwarded to
 the Go services.
 
+The callback is also where the BFF makes its first connectRPC call: `IdentityService.
+ResolveUser` on the auth service, which JIT-provisions the canonical user on first login
+and returns the existing one on every login after. The access token travels in
+`Authorization` metadata and only the email is in the body (ADR-4: the service trusts the
+token, not the request fields). The cookie is set **after** that call succeeds — a visitor
+with a WorkOS session but no canonical user is half-authenticated, so a provisioning
+failure yields a 503 and a retry, never a broken session.
+
 ## Docker
 
 ```sh
-docker build -t fns-webapp .
+docker build --secret id=github_token,env=GITHUB_TOKEN -t fns-webapp .
 docker run -p 3000:3000 fns-webapp
 ```
+
+The build needs `GITHUB_TOKEN` for the same reason `bun install` does. It is passed as a
+BuildKit secret rather than a build arg so it never lands in the image history.
 
 The image runs the **dev server** — "good enough for docker-compose" local bring-up
 (FNS-90). A production multi-stage build with proper SSR client-asset serving is

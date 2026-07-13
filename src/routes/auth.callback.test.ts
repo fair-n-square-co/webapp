@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OauthException } from '@workos-inc/node'
 import type * as WorkOSModule from '@workos-inc/node'
+import { ResolveUserResponse_Resolution } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/authx_api_pb'
+import { server } from '../test/msw/server'
+import {
+  TEST_AUTH_SERVICE_BASE_URL,
+  resolveUserHandler,
+  type RecordedResolveUser,
+  type ResolveUserOutcome,
+} from '../test/msw/identity'
 
 // External boundaries only: the Start server runtime (request-scoped cookie and
 // request helpers, which have no Vitest equivalent) and the WorkOS service.
@@ -37,9 +45,12 @@ const VALID_ENV = {
   WORKOS_CLIENT_ID: 'client_123',
   WORKOS_COOKIE_PASSWORD: 'a'.repeat(32),
   WORKOS_REDIRECT_URI: 'http://localhost:3000/auth/callback',
+  AUTH_SERVICE_BASE_URL: TEST_AUTH_SERVICE_BASE_URL,
 } as const
 
 const STATE = 'the-issued-state'
+const ACCESS_TOKEN = 'workos-access-token'
+const EMAIL = 'ada@example.com'
 
 /** Pull the bare GET handler off the route definition. */
 function getHandler(): () => Promise<Response> {
@@ -61,12 +72,28 @@ function arriveAtCallback(search: string): void {
   mocks.getRequest.mockReturnValue(new Request(`http://localhost:3000/auth/callback${search}`))
 }
 
+/** A successful code exchange: WorkOS returns the sealed session, the token and the user. */
+function workOSAcceptsTheCode(): void {
+  mocks.authenticateWithCode.mockResolvedValue({
+    sealedSession: 'sealed-cookie',
+    accessToken: ACCESS_TOKEN,
+    user: { email: EMAIL },
+  })
+}
+
 let originalEnv: NodeJS.ProcessEnv
+let resolveUserCalls: RecordedResolveUser[]
+
+/** Point the auth service at an outcome; every call it receives lands in `resolveUserCalls`. */
+function authServiceAnswers(outcome: ResolveUserOutcome): void {
+  server.use(resolveUserHandler(outcome, resolveUserCalls))
+}
 
 beforeEach(() => {
   originalEnv = { ...process.env }
   Object.assign(process.env, VALID_ENV)
   mocks.getCookie.mockReturnValue(STATE)
+  resolveUserCalls = []
 })
 
 afterEach(() => {
@@ -77,13 +104,71 @@ afterEach(() => {
 describe('GET /auth/callback', () => {
   it('seals the session and sends the user home on a good code', async () => {
     arriveAtCallback(`?code=good_code&state=${STATE}`)
-    mocks.authenticateWithCode.mockResolvedValue({ sealedSession: 'sealed-cookie' })
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'resolved', resolution: ResolveUserResponse_Resolution.CREATED })
 
     const res = await getHandler()()
 
     expect(res.status).toBe(302)
     expect(res.headers.get('location')).toBe('/')
     expect(mocks.setCookie).toHaveBeenCalledWith('fns_session', 'sealed-cookie', expect.anything())
+  })
+
+  it('provisions the canonical user once, with the token in metadata and the email in the body', async () => {
+    // ADR-4 zero trust: the auth service derives issuer/subject from the token it can
+    // verify, so the email is the only thing it will take our word for.
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'resolved', resolution: ResolveUserResponse_Resolution.CREATED })
+
+    await getHandler()()
+
+    expect(resolveUserCalls).toEqual([{ email: EMAIL, authorization: `Bearer ${ACCESS_TOKEN}` }])
+  })
+
+  it('signs in an already-provisioned user without creating a second record', async () => {
+    // Every login after the first: same identity, same canonical user, no duplicate.
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'resolved', resolution: ResolveUserResponse_Resolution.FOUND })
+
+    const res = await getHandler()()
+
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('/')
+    expect(mocks.setCookie).toHaveBeenCalledWith('fns_session', 'sealed-cookie', expect.anything())
+    expect(resolveUserCalls).toHaveLength(1)
+  })
+
+  it('does not establish a session when provisioning fails', async () => {
+    // A WorkOS cookie with no canonical user behind it is half-authenticated: every
+    // downstream call would fail. Better to hand back a retry than a broken session.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'unavailable' })
+
+    const res = await getHandler()()
+
+    expect(res.status).toBe(503)
+    expect(await res.text()).toContain('try signing in again')
+    expect(mocks.setCookie).not.toHaveBeenCalled()
+    expect(logged).toHaveBeenCalled()
+  })
+
+  it('does not establish a session when the auth service answers without a user', async () => {
+    // `user` is an optional message and `resolution` an open enum, so an empty answer
+    // decodes perfectly well into one that means nothing. It must not sign anyone in.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'incomplete' })
+
+    const res = await getHandler()()
+
+    expect(res.status).toBe(503)
+    expect(mocks.setCookie).not.toHaveBeenCalled()
+    expect(logged).toHaveBeenCalled()
   })
 
   it('restarts the login when WorkOS rejects the code', async () => {
