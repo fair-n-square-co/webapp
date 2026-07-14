@@ -4,6 +4,7 @@ import type * as WorkOSModule from '@workos-inc/node'
 import { ResolveUserResponse_Resolution } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/authx_api_pb'
 import { server } from '../test/msw/server'
 import {
+  STALL_MS,
   TEST_AUTH_SERVICE_BASE_URL,
   resolveUserHandler,
   type RecordedResolveUser,
@@ -99,6 +100,10 @@ beforeEach(() => {
 afterEach(() => {
   process.env = originalEnv
   vi.clearAllMocks()
+  // Not just `clearAllMocks`: the failure tests silence `console.error` with a spy, and
+  // clearing a spy leaves that silent implementation in place. A later test's unexpected
+  // error would then vanish instead of being printed.
+  vi.restoreAllMocks()
 })
 
 describe('GET /auth/callback', () => {
@@ -154,6 +159,48 @@ describe('GET /auth/callback', () => {
     expect(await res.text()).toContain('try signing in again')
     expect(mocks.setCookie).not.toHaveBeenCalled()
     expect(logged).toHaveBeenCalled()
+  })
+
+  it('sends the failed visitor back to a fresh login, not back to the callback', async () => {
+    // The state cookie is spent and the authorization code is single-use, so retrying this
+    // request can only fail again. `Retry-After` would be advertising exactly that.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'unavailable' })
+
+    const res = await getHandler()()
+
+    expect(res.headers.get('retry-after')).toBeNull()
+    expect(await res.text()).toContain('href="/auth/login"')
+  })
+
+  it('gives up on an auth service that stalls rather than hanging the login', async () => {
+    // Without a deadline the callback would wait on a stalled service indefinitely, holding
+    // the request open with it.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    process.env['AUTH_SERVICE_TIMEOUT_MS'] = String(Math.floor(STALL_MS / 4))
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'stalls' })
+
+    const res = await getHandler()()
+
+    expect(res.status).toBe(503)
+    expect(mocks.setCookie).not.toHaveBeenCalled()
+  })
+
+  it('does not establish a session when the canonical user has no email', async () => {
+    // `email` is as load-bearing as `id` and just as optional on the wire.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'userWithoutEmail' })
+
+    const res = await getHandler()()
+
+    expect(res.status).toBe(503)
+    expect(mocks.setCookie).not.toHaveBeenCalled()
   })
 
   it('does not establish a session when the auth service answers without a user', async () => {

@@ -67,9 +67,15 @@ export const Route = createFileRoute('/auth/callback')({
           // downstream call would fail in ways much harder to read than this. Send them
           // back to a retry rather than into an app that cannot serve them.
           console.error('ResolveUser failed; refusing to establish the session', error)
+          // No `Retry-After`: that invites a retry of *this* request, which cannot work.
+          // The state cookie is spent and the authorization code is single-use, so the
+          // only way forward is a fresh login — link them to one rather than imply the
+          // callback is worth hitting again.
           return new Response(
-            "We couldn't finish setting up your account. Please try signing in again.",
-            { status: 503, headers: { 'retry-after': '5' } },
+            `<!doctype html><meta charset="utf-8"><title>Sign-in failed</title>` +
+              `<p>We couldn't finish setting up your account. ` +
+              `<a href="/auth/login">Please try signing in again.</a></p>`,
+            { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } },
           )
         }
 

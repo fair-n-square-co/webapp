@@ -57,7 +57,7 @@ describe('getWorkOSConfig', () => {
 
 describe('getAuthServiceConfig', () => {
   it('reads the auth service base URL from the environment', () => {
-    expect(getAuthServiceConfig()).toEqual({ baseUrl: 'http://localhost:8080' })
+    expect(getAuthServiceConfig()).toEqual({ baseUrl: 'http://localhost:8080', timeoutMs: 5000 })
   })
 
   it('throws when AUTH_SERVICE_BASE_URL is missing', () => {
@@ -72,5 +72,25 @@ describe('getAuthServiceConfig', () => {
     // later as a puzzling 404 rather than here as a misconfiguration.
     process.env['AUTH_SERVICE_BASE_URL'] = '/auth'
     expect(() => getAuthServiceConfig()).toThrow(/must be an absolute URL/)
+  })
+
+  it.each(['file:///auth', 'mailto:auth@example.com'])(
+    'rejects the absolute-but-unusable base URL %s',
+    (baseUrl) => {
+      // `new URL` accepts these happily. Only a scheme check stops them passing validation
+      // and then failing every call at runtime instead.
+      process.env['AUTH_SERVICE_BASE_URL'] = baseUrl
+      expect(() => getAuthServiceConfig()).toThrow(/must be http or https/)
+    },
+  )
+
+  it('takes a timeout override from the environment', () => {
+    process.env['AUTH_SERVICE_TIMEOUT_MS'] = '250'
+    expect(getAuthServiceConfig().timeoutMs).toBe(250)
+  })
+
+  it.each(['0', '-1', 'soon', '1.5'])('rejects the nonsensical timeout %s', (timeout) => {
+    process.env['AUTH_SERVICE_TIMEOUT_MS'] = timeout
+    expect(() => getAuthServiceConfig()).toThrow(/must be a positive integer/)
   })
 })

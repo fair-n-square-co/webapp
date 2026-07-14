@@ -1,4 +1,4 @@
-import { HttpResponse, http } from 'msw'
+import { HttpResponse, delay, http } from 'msw'
 import type { RequestHandler } from 'msw'
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf'
 import {
@@ -29,11 +29,17 @@ export type RecordedResolveUser = Readonly<{
   authorization: string | null
 }>
 
+/** How long a `stalls` outcome hangs for — comfortably past any timeout a test sets. */
+export const STALL_MS = 400
+
 export type ResolveUserOutcome =
   | Readonly<{ kind: 'resolved'; resolution: ResolveUserResponse_Resolution }>
-  /** A well-formed reply the BFF must still refuse: no user, or an unusable resolution. */
+  /** Well-formed replies the BFF must still refuse: no usable resolution, or no email. */
   | Readonly<{ kind: 'incomplete' }>
+  | Readonly<{ kind: 'userWithoutEmail' }>
   | Readonly<{ kind: 'unavailable' }>
+  /** Accepts the request, then never answers — the case a deadline exists for. */
+  | Readonly<{ kind: 'stalls' }>
 
 /**
  * Handle `ResolveUser` with the given outcome, appending each call to `calls`.
@@ -54,6 +60,10 @@ export function resolveUserHandler(
       authorization: request.headers.get('authorization'),
     })
 
+    if (outcome.kind === 'stalls') {
+      await delay(STALL_MS)
+    }
+
     if (outcome.kind === 'unavailable') {
       // Connect reports errors as JSON with an HTTP status, whatever the body format.
       return HttpResponse.json(
@@ -67,10 +77,18 @@ export function resolveUserHandler(
         ? create(ResolveUserResponseSchema, {
             resolution: ResolveUserResponse_Resolution.UNSPECIFIED,
           })
-        : create(ResolveUserResponseSchema, {
-            resolution: outcome.resolution,
-            user: { id: 'user_01HZY', email: message.email },
-          })
+        : outcome.kind === 'userWithoutEmail'
+          ? create(ResolveUserResponseSchema, {
+              resolution: ResolveUserResponse_Resolution.CREATED,
+              user: { id: 'user_01HZY' },
+            })
+          : create(ResolveUserResponseSchema, {
+              resolution:
+                outcome.kind === 'stalls'
+                  ? ResolveUserResponse_Resolution.FOUND
+                  : outcome.resolution,
+              user: { id: 'user_01HZY', email: message.email },
+            })
 
     return HttpResponse.arrayBuffer(toBinary(ResolveUserResponseSchema, response).buffer, {
       headers: { 'content-type': 'application/proto' },

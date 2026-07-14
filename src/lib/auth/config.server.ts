@@ -41,21 +41,57 @@ export function getWorkOSConfig(): WorkOSConfig {
   }
 }
 
-/** Where the BFF reaches the Go auth service over connectRPC. */
+/**
+ * A call to the auth service holds the login open, so it gets a deadline rather than
+ * the transport's default of none. Without one, an auth service that accepts the
+ * connection and then stalls would hang the OAuth callback — and the request's server
+ * resources — for as long as it felt like.
+ */
+const DEFAULT_AUTH_SERVICE_TIMEOUT_MS = 5_000
+
+/** Where the BFF reaches the Go auth service over connectRPC, and how long it will wait. */
 export type AuthServiceConfig = Readonly<{
   baseUrl: string
+  timeoutMs: number
 }>
 
 export function getAuthServiceConfig(): AuthServiceConfig {
+  return {
+    baseUrl: requireAuthServiceBaseUrl(),
+    timeoutMs: readAuthServiceTimeoutMs(),
+  }
+}
+
+function requireAuthServiceBaseUrl(): string {
   const baseUrl = requireEnv('AUTH_SERVICE_BASE_URL')
 
-  // connectRPC appends `/<package>.<Service>/<Method>` to this, so a typo'd base
-  // would otherwise surface as a confusing 404 from whatever host it resolved to.
+  // connectRPC appends `/<package>.<Service>/<Method>` to this, so a typo'd base would
+  // otherwise surface as a confusing 404 from whatever host it resolved to. The scheme is
+  // checked too: `new URL` happily accepts `file:` or `mailto:`, which would pass this
+  // check and then fail every single call at runtime instead.
+  let url: URL
   try {
-    new URL(baseUrl)
+    url = new URL(baseUrl)
   } catch {
     throw new Error(`AUTH_SERVICE_BASE_URL must be an absolute URL, got: ${baseUrl}`)
   }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`AUTH_SERVICE_BASE_URL must be http or https, got: ${url.protocol}`)
+  }
 
-  return { baseUrl }
+  return baseUrl
+}
+
+/** Optional: an ops knob for a slow environment, not something a deploy has to set. */
+function readAuthServiceTimeoutMs(): number {
+  const configured = process.env['AUTH_SERVICE_TIMEOUT_MS']
+  if (configured === undefined || configured === '') {
+    return DEFAULT_AUTH_SERVICE_TIMEOUT_MS
+  }
+
+  const timeoutMs = Number(configured)
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error(`AUTH_SERVICE_TIMEOUT_MS must be a positive integer, got: ${configured}`)
+  }
+  return timeoutMs
 }

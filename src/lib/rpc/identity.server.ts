@@ -44,7 +44,7 @@ function bearerToken(accessToken: string): Interceptor {
  * transport no `fetch` interceptor — MSW in tests, tracing later — can see.
  */
 function createIdentityClient(accessToken: string): Client<typeof IdentityService> {
-  const { baseUrl } = getAuthServiceConfig()
+  const { baseUrl, timeoutMs } = getAuthServiceConfig()
 
   const transport = createConnectTransport({
     baseUrl,
@@ -52,6 +52,8 @@ function createIdentityClient(accessToken: string): Client<typeof IdentityServic
     // browser's network tab. Nothing here is server→server debuggable that way, so take
     // the binary wire format the Go service already speaks.
     useBinaryFormat: true,
+    // A call with no deadline can hang the login for as long as the auth service stalls.
+    defaultTimeoutMs: timeoutMs,
     interceptors: [bearerToken(accessToken)],
   })
 
@@ -86,7 +88,7 @@ export async function resolveUser({
       `auth service returned an unusable resolution for ResolveUser: ${response.resolution}`,
     )
   }
-  if (!response.user?.id) {
+  if (!response.user?.id || !response.user.email) {
     throw new Error('auth service returned no canonical user for ResolveUser')
   }
 
