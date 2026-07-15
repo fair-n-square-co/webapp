@@ -8,7 +8,7 @@
         "@bufbuild/protobuf": "^2.12.1",
         "@connectrpc/connect": "^2.1.2",
         "@connectrpc/connect-web": "^2.1.2",
-        "@fair-n-square-co/apis": "^0.1.0",
+        "@fair-n-square-co/apis": "^0.2.0",
         "@tanstack/react-query": "^5.101.2",
         "@tanstack/react-router": "^1.170.17",
         "@tanstack/react-router-ssr-query": "^1.167.1",
@@ -129,7 +129,7 @@
 
     "@exodus/bytes": ["@exodus/bytes@1.15.1", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-S6mL0yNB/Abt9Ei4tq8gDhcczc4S3+vQ4ra7vxnAf+YHC02srtqxKKZghx2Dq6p0e66THKwR6r8N6P95wEty7Q=="],
 
-    "@fair-n-square-co/apis": ["@fair-n-square-co/apis@0.1.0", "https://npm.pkg.github.com/download/@fair-n-square-co/apis/0.1.0/e01f8cd88073171c6b96aa6c024b735905de119c", { "dependencies": { "@bufbuild/protobuf": "^2.9.0" } }, "sha512-8PeTP5IzfAJuPCqhOfPUGbdHCH0o71boOjs7nqIkDbWor9j3+OlMvFiVLyUaPr/C6gln9eTyzIWHxcfzPUdlWA=="],
+    "@fair-n-square-co/apis": ["@fair-n-square-co/apis@0.2.0", "https://npm.pkg.github.com/download/@fair-n-square-co/apis/0.2.0/9c7f2c22ce28e627051c3d68d7f7072d92a00c79", { "dependencies": { "@bufbuild/protobuf": "^2.9.0" } }, "sha512-LZwIJ2V/HZWugdU0OGDrsGPJNzHI4cxgnEDjVGCtSuB2AdOgkofAgmJg3XsNXt/m8xZFxYUGNkoVlqzo20CGAA=="],
 
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
 
