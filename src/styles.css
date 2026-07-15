@@ -1,0 +1,488 @@
+/* ————————————————————————————————————————————————
+   Fair n Square — design tokens (ported from fns-ui-poc)
+   Teal carries meaning: teal = money coming to you,
+   clay = money you owe. "Square" = settled.
+
+   Only the tokens and atoms the app shell and the read-only
+   profile screen consume are ported here; the rest of the POC's
+   system arrives with the screens that need it.
+   ———————————————————————————————————————————————— */
+:root {
+  --paper: #f3f7f6;
+  --surface: #ffffff;
+  --ink: #13241f;
+  --ink-soft: #52645e;
+  --ink-faint: #8aa09a;
+  --line: #dfe9e6;
+  --line-strong: #c8d8d3;
+
+  --teal: #0b8271;
+  --teal-deep: #0a5f53;
+  --teal-tint: #e0f0ec;
+  --teal-wash: #eef6f4;
+
+  --clay: #c2532f;
+  --clay-tint: #f9e9e2;
+
+  /* text-on-surface variants — brightened in dark mode while the
+     background variants above stay saturated */
+  --teal-text: #0a5f53;
+  --clay-text: #9c3f21;
+
+  color-scheme: light;
+
+  --display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --body: 'Instrument Sans', system-ui, sans-serif;
+  --mono: 'Spline Sans Mono', ui-monospace, monospace;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(19, 36, 31, 0.05), 0 6px 24px -12px rgba(19, 36, 31, 0.12);
+  --nav-h: 62px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #0e1715;
+  --surface: #16221f;
+  --ink: #e5efec;
+  --ink-soft: #a2b6af;
+  --ink-faint: #6d8279;
+  --line: #253531;
+  --line-strong: #374a44;
+
+  --teal: #17a894;
+  --teal-deep: #0e8171;
+  --teal-text: #5bd6c3;
+  --teal-tint: #16352f;
+  --teal-wash: #142622;
+
+  --clay: #cf6039;
+  --clay-text: #f09877;
+  --clay-tint: #33201a;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  margin: 0;
+}
+
+/* ————— App shell ————— */
+.shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.main {
+  padding: 18px 18px calc(var(--nav-h) + 90px);
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Sidebar (desktop) */
+.sidebar {
+  display: none;
+}
+
+/* Bottom nav (mobile) */
+.bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  display: grid;
+  /* Two destinations flanking the central add affordance. More tabs join the
+     flanks as their routes land, keeping the FAB centred. */
+  grid-template-columns: 1fr 72px 1fr;
+  align-items: center;
+  z-index: 40;
+}
+
+.bottomnav .navitem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  padding: 6px 0;
+}
+
+.bottomnav .navitem.active {
+  color: var(--teal-text);
+}
+
+.bottomnav .navitem svg {
+  width: 22px;
+  height: 22px;
+}
+
+.fab {
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  background: var(--teal);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  transform: translateY(-14px);
+  box-shadow: 0 8px 20px -6px rgba(11, 130, 113, 0.55);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.fab:hover {
+  background: var(--teal-deep);
+  transform: translateY(-16px);
+}
+
+:root[data-theme='dark'] .fab {
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+}
+
+.fab svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* The add-expense affordances are placeholders until that feature lands: dimmed and
+   inert so they read as "coming soon" rather than as buttons that silently do nothing. */
+.fab:disabled,
+.add-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fab:disabled:hover {
+  background: var(--teal);
+  transform: translateY(-14px);
+}
+
+/* Desktop layout */
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: 250px 1fr;
+  }
+
+  .bottomnav {
+    display: none;
+  }
+
+  .main {
+    padding: 40px 48px 80px;
+    max-width: 760px;
+    margin: 0;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 28px 16px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+  }
+
+  .sidebar .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px 22px;
+  }
+
+  .sidebar .navitem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+  }
+
+  .sidebar .navitem:hover {
+    background: var(--teal-wash);
+    color: var(--teal-text);
+  }
+
+  .sidebar .navitem.active {
+    background: var(--teal-tint);
+    color: var(--teal-text);
+  }
+
+  .sidebar .navitem svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sidebar .add-cta {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--teal);
+    color: #fff;
+    font-weight: 700;
+    padding: 11px 12px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+  }
+
+  .sidebar .add-cta:hover {
+    background: var(--teal-deep);
+  }
+
+  .sidebar .add-cta svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .sidebar .spacer {
+    flex: 1;
+  }
+}
+
+/* ————— Brand ————— */
+.brandmark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--teal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.brandmark::after {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-radius: 2.5px;
+  background: var(--paper);
+}
+
+.brandname {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.brandname em {
+  font-style: normal;
+  color: var(--teal-text);
+}
+
+/* ————— Page furniture ————— */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 18px;
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.page-sub {
+  color: var(--ink-soft);
+  font-size: 14px;
+  margin: 2px 0 0;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 22px 0 10px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ————— Identity card ————— */
+.identity {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.identity .name {
+  font-weight: 700;
+  font-size: 17px;
+  font-family: var(--display);
+}
+
+.identity .email {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
+
+/* ————— Rows ————— */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  width: 100%;
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.row .title {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.row .meta {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 1px;
+}
+
+.row .value {
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.row .value.mono {
+  font-family: var(--mono);
+}
+
+.row .value.unset {
+  color: var(--ink-faint);
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* ————— Avatars ————— */
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+  letter-spacing: 0.02em;
+  background: oklch(0.93 0.045 var(--av-h, 168));
+  color: oklch(0.38 0.09 var(--av-h, 168));
+}
+
+:root[data-theme='dark'] .avatar {
+  background: oklch(0.33 0.05 var(--av-h, 168));
+  color: oklch(0.86 0.06 var(--av-h, 168));
+}
+
+.avatar.sm {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+
+.avatar.lg {
+  width: 46px;
+  height: 46px;
+  font-size: 15px;
+}
+
+/* ————— About ————— */
+.about {
+  padding: 16px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}

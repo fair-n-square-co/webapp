@@ -1,10 +1,16 @@
 export function Home() {
+  // The app shell (pathless `_app` layout) provides the surrounding <main>, so this
+  // renders only the page's own content.
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '3rem', maxWidth: 640 }}>
-      <h1 style={{ margin: 0 }}>
-        fair <em>n</em> square
-      </h1>
-      <p style={{ color: '#52645e' }}>webapp walking skeleton — React + TanStack Start (BFF).</p>
-    </main>
+    <section>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">
+            fair <em>n</em> square
+          </h1>
+          <p className="page-sub">webapp walking skeleton — React + TanStack Start (BFF).</p>
+        </div>
+      </div>
+    </section>
   )
 }

@@ -1,0 +1,57 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { Avatar } from '../lib/ui/Avatar'
+import { profileQueryOptions } from '../lib/profile/profile-query'
+
+/**
+ * The read-only profile screen — the design system's first real consumer.
+ *
+ * It reads the profile with `useSuspenseQuery`, so the data the route loader
+ * prefetched (and SSR dehydrated) is already in the cache on first render: no
+ * loading state, no refetch flash. Editing and preferences are a later change; this
+ * screen only shows what is there.
+ */
+export function ProfileScreen() {
+  const { data: profile } = useSuspenseQuery(profileQueryOptions())
+
+  const displayName = profile.displayName.trim()
+  const hasUsername = profile.username.trim() !== ''
+
+  return (
+    <section>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Profile</h1>
+          <p className="page-sub">Your account.</p>
+        </div>
+      </div>
+
+      <div className="card identity">
+        <Avatar name={displayName || profile.email} colorSeed={profile.userId} size="lg" />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 className="name">{displayName || 'Unnamed'}</h2>
+          <div className="email">{profile.email}</div>
+        </div>
+      </div>
+
+      <p className="eyebrow">Account</p>
+      <div className="card rows">
+        <div className="row">
+          <span className="grow">
+            <span className="title">Username</span>
+            <span className="meta">Others find you by this handle.</span>
+          </span>
+          {hasUsername ? (
+            <span className="value mono">@{profile.username}</span>
+          ) : (
+            <span className="value unset">Not set yet</span>
+          )}
+        </div>
+      </div>
+
+      <p className="eyebrow">About</p>
+      <div className="card about">
+        Fair n Square is free, open source, and keeps no score beyond the one you ask it to.
+      </div>
+    </section>
+  )
+}
