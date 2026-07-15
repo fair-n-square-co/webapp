@@ -11,8 +11,14 @@ FROM oven/bun:1.3.13
 WORKDIR /app
 
 # Install deps first so the layer caches independently of source changes.
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# `.npmrc` points the @fair-n-square-co scope at GitHub Packages and reads the token
+# from the environment, so it holds no secret and is safe to bake into the layer. The
+# token itself is mounted for the install only — an ARG or ENV would persist it in the
+# image history. Build with:
+#   docker build --secret id=github_token,env=GITHUB_TOKEN .
+COPY package.json bun.lock .npmrc ./
+RUN --mount=type=secret,id=github_token \
+  GITHUB_TOKEN="$(cat /run/secrets/github_token)" bun install --frozen-lockfile
 
 # App source.
 COPY . .

@@ -19,6 +19,9 @@ export default defineConfig({
       WORKOS_CLIENT_ID: 'client_placeholder',
       WORKOS_COOKIE_PASSWORD: 'placeholder-cookie-password-32-chars',
       WORKOS_REDIRECT_URI: 'http://localhost:3000/auth/callback',
+      // Same story: the callback never reaches ResolveUser in these specs, so this
+      // only has to parse as a URL — nothing ever connects to it.
+      AUTH_SERVICE_BASE_URL: 'http://localhost:8080',
     },
   },
 })
