@@ -40,7 +40,7 @@ test('sends an anonymous visitor into the login flow when they open Profile', as
   // the server's redirect chain out to real WorkOS (a redirect hop never re-enters
   // page.route). Abort at the host so any such regression fails fast and hermetically.
   await page.route(
-    (url) => url.hostname.endsWith('workos.com'),
+    (url) => url.hostname === 'workos.com' || url.hostname.endsWith('.workos.com'),
     (route) => route.abort(),
   )
 
