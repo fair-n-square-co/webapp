@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getCookie } from '@tanstack/react-start/server'
-import { getWorkOSConfig } from '../lib/auth/config.server'
-import { SESSION_COOKIE_NAME, clearSessionCookie, getWorkOS } from '../lib/auth/session.server'
+import {
+  SESSION_COOKIE_NAME,
+  clearSessionCookie,
+  getWorkOSLogoutUrl,
+} from '../lib/auth/session.server'
 import { redirectResponse } from '../lib/http'
 
 // POST rather than GET: a GET logout is trivially CSRF-able, and link prefetchers
@@ -20,15 +23,9 @@ export const Route = createFileRoute('/auth/logout')({
           return redirectResponse('/')
         }
 
-        const { cookiePassword } = getWorkOSConfig()
-        const sealed = getWorkOS().userManagement.loadSealedSession({
-          sessionData,
-          cookiePassword,
-        })
-
         // An expired or tampered cookie can't produce a logout URL. The local
         // cookie is already gone, so finishing at '/' is the correct outcome.
-        const logoutUrl = await sealed.getLogoutUrl().catch(() => null)
+        const logoutUrl = await getWorkOSLogoutUrl({ sessionData })
         return redirectResponse(logoutUrl ?? '/')
       },
     },

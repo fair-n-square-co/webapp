@@ -120,6 +120,27 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
+/**
+ * Build a WorkOS logout URL for an already-sealed session, or `null` if one can't be
+ * produced (an expired or tampered session, or WorkOS being unreachable). Sending the
+ * browser through this is how the *WorkOS* session ends — without it, WorkOS's own SSO
+ * cookie would silently re-authenticate the same identity on the next login. `returnTo`
+ * is where WorkOS returns afterward; it must be allow-listed as a sign-out redirect in
+ * the WorkOS dashboard, otherwise WorkOS falls back to the configured App homepage.
+ */
+export async function getWorkOSLogoutUrl({
+  sessionData,
+  returnTo,
+}: Readonly<{ sessionData: string; returnTo?: string }>): Promise<string | null> {
+  try {
+    const { cookiePassword } = getWorkOSConfig()
+    const sealed = getWorkOS().userManagement.loadSealedSession({ sessionData, cookiePassword })
+    return await sealed.getLogoutUrl(returnTo ? { returnTo } : {})
+  } catch {
+    return null
+  }
+}
+
 /** Same as {@link getSession}, but redirects anonymous callers to the login route. */
 export async function requireSession(): Promise<Session> {
   const session = await getSession()

@@ -2,6 +2,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
+import { NotFound } from './components/NotFound'
+import { ErrorScreen } from './components/ErrorScreen'
 
 /**
  * The router owns the QueryClient and hands it to routes as context, so loaders can
@@ -28,6 +30,10 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
+    // Unknown URLs and thrown render/loader errors render inside the app shell, so
+    // every page — even these — keeps the nav and never becomes a dead end.
+    defaultNotFoundComponent: NotFound,
+    defaultErrorComponent: ErrorScreen,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient })

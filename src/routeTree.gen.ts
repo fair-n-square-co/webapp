@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthLogoutRouteImport } from './routes/auth.logout'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AppSigninFailedRouteImport } from './routes/_app.signin-failed'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 
 const HealthzRoute = HealthzRouteImport.update({
@@ -46,6 +47,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSigninFailedRoute = AppSigninFailedRouteImport.update({
+  id: '/signin-failed',
+  path: '/signin-failed',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -56,6 +62,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/healthz': typeof HealthzRoute
   '/profile': typeof AppProfileRoute
+  '/signin-failed': typeof AppSigninFailedRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/healthz': typeof HealthzRoute
   '/profile': typeof AppProfileRoute
+  '/signin-failed': typeof AppSigninFailedRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/healthz': typeof HealthzRoute
   '/_app/profile': typeof AppProfileRoute
+  '/_app/signin-failed': typeof AppSigninFailedRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
@@ -84,6 +93,7 @@ export interface FileRouteTypes {
     | '/'
     | '/healthz'
     | '/profile'
+    | '/signin-failed'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
   to:
     | '/healthz'
     | '/profile'
+    | '/signin-failed'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/healthz'
     | '/_app/profile'
+    | '/_app/signin-failed'
     | '/auth/callback'
     | '/auth/login'
     | '/auth/logout'
@@ -158,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/signin-failed': {
+      id: '/_app/signin-failed'
+      path: '/signin-failed'
+      fullPath: '/signin-failed'
+      preLoaderRoute: typeof AppSigninFailedRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/profile': {
       id: '/_app/profile'
       path: '/profile'
@@ -170,11 +189,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
+  AppSigninFailedRoute: typeof AppSigninFailedRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
+  AppSigninFailedRoute: AppSigninFailedRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

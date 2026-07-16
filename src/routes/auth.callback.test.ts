@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   setCookie: vi.fn(),
   deleteCookie: vi.fn(),
   authenticateWithCode: vi.fn(),
+  loadSealedSession: vi.fn(),
+  getLogoutUrl: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-start/server', () => ({
@@ -34,7 +36,10 @@ vi.mock('@workos-inc/node', async (importOriginal) => {
   return {
     ...actual,
     WorkOS: class {
-      userManagement = { authenticateWithCode: mocks.authenticateWithCode }
+      userManagement = {
+        authenticateWithCode: mocks.authenticateWithCode,
+        loadSealedSession: mocks.loadSealedSession,
+      }
     },
   }
 })
@@ -52,6 +57,8 @@ const VALID_ENV = {
 const STATE = 'the-issued-state'
 const ACCESS_TOKEN = 'workos-access-token'
 const EMAIL = 'ada@example.com'
+const WORKOS_LOGOUT_URL =
+  'https://api.workos.test/user_management/sessions/logout?session_id=sess_1'
 
 /** Pull the bare GET handler off the route definition. */
 function getHandler(): () => Promise<Response> {
@@ -94,6 +101,10 @@ beforeEach(() => {
   originalEnv = { ...process.env }
   Object.assign(process.env, VALID_ENV)
   mocks.getCookie.mockReturnValue(STATE)
+  // On a provisioning failure the callback ends the WorkOS session; by default that
+  // yields a logout URL. Individual tests override `getLogoutUrl` to force the failure.
+  mocks.loadSealedSession.mockReturnValue({ getLogoutUrl: mocks.getLogoutUrl })
+  mocks.getLogoutUrl.mockResolvedValue(WORKOS_LOGOUT_URL)
   resolveUserCalls = []
 })
 
@@ -155,15 +166,16 @@ describe('GET /auth/callback', () => {
 
     const res = await getHandler()()
 
-    expect(res.status).toBe(503)
-    expect(await res.text()).toContain('try signing in again')
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(WORKOS_LOGOUT_URL)
     expect(mocks.setCookie).not.toHaveBeenCalled()
     expect(logged).toHaveBeenCalled()
   })
 
-  it('sends the failed visitor back to a fresh login, not back to the callback', async () => {
-    // The state cookie is spent and the authorization code is single-use, so retrying this
-    // request can only fail again. `Retry-After` would be advertising exactly that.
+  it('ends the WorkOS session so the retry is not silently looped', async () => {
+    // Leaving the WorkOS SSO cookie alive would re-authenticate the same identity on the
+    // next attempt with no account picker — the exact loop we are avoiding. So the failure
+    // routes through WorkOS logout, returning to the in-app failure page afterward.
     vi.spyOn(console, 'error').mockImplementation(() => {})
     arriveAtCallback(`?code=good_code&state=${STATE}`)
     workOSAcceptsTheCode()
@@ -171,8 +183,27 @@ describe('GET /auth/callback', () => {
 
     const res = await getHandler()()
 
+    expect(mocks.getLogoutUrl).toHaveBeenCalledWith({
+      returnTo: 'http://localhost:3000/signin-failed',
+    })
+    expect(res.headers.get('location')).toBe(WORKOS_LOGOUT_URL)
+    // No `Retry-After`: that would invite a retry of this single-use callback.
     expect(res.headers.get('retry-after')).toBeNull()
-    expect(await res.text()).toContain('href="/auth/login"')
+  })
+
+  it('falls back to the in-app failure page when the WorkOS logout URL cannot be built', async () => {
+    // An expired or unreachable session can't produce a logout URL. We still refuse the
+    // session and still land the visitor on the failure page rather than erroring.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.getLogoutUrl.mockRejectedValue(new Error('session expired'))
+    arriveAtCallback(`?code=good_code&state=${STATE}`)
+    workOSAcceptsTheCode()
+    authServiceAnswers({ kind: 'unavailable' })
+
+    const res = await getHandler()()
+
+    expect(res.headers.get('location')).toBe('/signin-failed')
+    expect(mocks.setCookie).not.toHaveBeenCalled()
   })
 
   it('gives up on an auth service that stalls rather than hanging the login', async () => {
@@ -186,7 +217,8 @@ describe('GET /auth/callback', () => {
 
     const res = await getHandler()()
 
-    expect(res.status).toBe(503)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(WORKOS_LOGOUT_URL)
     expect(mocks.setCookie).not.toHaveBeenCalled()
   })
 
@@ -199,7 +231,8 @@ describe('GET /auth/callback', () => {
 
     const res = await getHandler()()
 
-    expect(res.status).toBe(503)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(WORKOS_LOGOUT_URL)
     expect(mocks.setCookie).not.toHaveBeenCalled()
   })
 
@@ -213,7 +246,8 @@ describe('GET /auth/callback', () => {
 
     const res = await getHandler()()
 
-    expect(res.status).toBe(503)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe(WORKOS_LOGOUT_URL)
     expect(mocks.setCookie).not.toHaveBeenCalled()
     expect(logged).toHaveBeenCalled()
   })
