@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Avatar } from '../lib/ui/Avatar'
+import { IdentityCard } from './IdentityCard'
 import { sessionUserQueryOptions } from '../lib/auth/session-user'
 
 export function Home() {
@@ -21,16 +21,12 @@ export function Home() {
       </div>
 
       {sessionUser ? (
-        <div className="card identity">
-          <Avatar
-            name={sessionUser.name || sessionUser.email}
-            colorSeed={sessionUser.email}
-            size="lg"
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 className="name">{sessionUser.name || 'Signed in'}</h2>
-            <div className="email">{sessionUser.email}</div>
-          </div>
+        <IdentityCard
+          name={sessionUser.name}
+          placeholder="Signed in"
+          email={sessionUser.email}
+          colorSeed={sessionUser.email}
+        >
           {/* Logout is a POST route (a GET would be CSRF-able), so it must be a form
               submit, not a link. The full-page POST hits the server handler, which
               clears the session and redirects. */}
@@ -39,7 +35,7 @@ export function Home() {
               Log out
             </button>
           </form>
-        </div>
+        </IdentityCard>
       ) : (
         // A plain anchor, not a <Link>: `/auth/login` is a server-only route (a GET
         // handler that 302s to WorkOS, no client component). It needs a full-page

@@ -424,6 +424,13 @@ h3 {
   gap: 14px;
 }
 
+/* The name/email column takes the leftover width; min-width lets long emails truncate
+   instead of pushing the trailing action out of the card. */
+.identity .who {
+  flex: 1;
+  min-width: 0;
+}
+
 .identity .name {
   font-weight: 700;
   font-size: 17px;

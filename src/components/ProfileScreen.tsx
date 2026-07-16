@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Avatar } from '../lib/ui/Avatar'
+import { IdentityCard } from './IdentityCard'
 import { profileQueryOptions } from '../lib/profile/profile-query'
 
 /**
@@ -25,13 +25,12 @@ export function ProfileScreen() {
         </div>
       </div>
 
-      <div className="card identity">
-        <Avatar name={displayName || profile.email} colorSeed={profile.userId} size="lg" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 className="name">{displayName || 'Unnamed'}</h2>
-          <div className="email">{profile.email}</div>
-        </div>
-      </div>
+      <IdentityCard
+        name={displayName}
+        placeholder="Unnamed"
+        email={profile.email}
+        colorSeed={profile.userId}
+      />
 
       <p className="eyebrow">Account</p>
       <div className="card rows">
