@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { waitForHydration } from './support'
 
 // Unknown URLs render the NotFound screen at the root boundary, wrapped in its own
 // app shell so the visitor is never stranded on a bare error page.
@@ -22,6 +23,8 @@ test('keeps exactly one app shell around the not-found screen', async ({ page })
 
 test('leads back home', async ({ page }) => {
   await page.goto('/this-page-does-not-exist')
+  // The link is a router <Link>; click after hydration so it stays a client nav.
+  await waitForHydration(page)
 
   await page.getByRole('link', { name: 'Back to home' }).click()
 

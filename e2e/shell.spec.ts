@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { waitForHydration } from './support'
 
 // The app shell: sidebar navigation and its log in/out corner. The signed-in state
 // needs a real WorkOS session, which the hermetic e2e env has no way to mint — that
@@ -35,8 +36,17 @@ test('sends an anonymous visitor into the login flow when they open Profile', as
   await page.route('**/auth/login', (route) =>
     route.fulfill({ contentType: 'text/html', body: '<html><body>login-stub</body></html>' }),
   )
+  // Safety net: a pre-hydration click would document-navigate to /profile and follow
+  // the server's redirect chain out to real WorkOS (a redirect hop never re-enters
+  // page.route). Abort at the host so any such regression fails fast and hermetically.
+  await page.route(
+    (url) => url.hostname.endsWith('workos.com'),
+    (route) => route.abort(),
+  )
 
   await page.goto('/')
+  // The click must be a client-side navigation — that is the path under test.
+  await waitForHydration(page)
   await page.locator('.sidebar').getByRole('link', { name: 'Profile' }).click()
 
   await expect(page).toHaveURL(/\/auth\/login$/)
