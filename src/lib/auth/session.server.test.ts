@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   getCookie: vi.fn<(name: string) => string | undefined>(),
   setCookie: vi.fn(),
   deleteCookie: vi.fn(),
+  // Undefined by default: most tests exercise one call, where request-scoped
+  // memoization is irrelevant. The per-request tests point it at a real Request.
+  getRequest: vi.fn<() => Request | undefined>(),
   loadSealedSession: vi.fn(),
   workosConstructor: vi.fn(),
 }))
@@ -15,6 +18,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   getCookie: mocks.getCookie,
   setCookie: mocks.setCookie,
   deleteCookie: mocks.deleteCookie,
+  getRequest: mocks.getRequest,
 }))
 
 vi.mock('@workos-inc/node', () => ({
@@ -153,5 +157,44 @@ describe('getSession', () => {
 
     expect(await getSession()).toBeNull()
     expect(mocks.deleteCookie).toHaveBeenCalledWith(SESSION_COOKIE_NAME, expect.anything())
+  })
+
+  it('resolves the session once when several callers share one request', async () => {
+    // Route loaders run in parallel, so one request can ask for the session more than
+    // once. Each resolution of an expired token spends the single-use refresh token,
+    // so a second concurrent resolution would sign the visitor out. Regression for that.
+    mocks.getRequest.mockReturnValue(new Request('http://localhost:3000/profile'))
+    mocks.getCookie.mockReturnValue('sealed-cookie')
+    const authenticate = vi.fn().mockResolvedValue({
+      authenticated: true,
+      accessToken: 'access-token',
+      user: USER,
+    })
+    mocks.loadSealedSession.mockReturnValue({ authenticate, refresh: vi.fn() })
+
+    const [first, second] = await Promise.all([getSession(), getSession()])
+
+    expect(first).toEqual({ accessToken: 'access-token', user: USER })
+    expect(second).toBe(first)
+    expect(authenticate).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolves separately for distinct requests', async () => {
+    // The memo is per request, never across them: two visitors' requests must not
+    // share a session resolution.
+    mocks.getCookie.mockReturnValue('sealed-cookie')
+    const authenticate = vi.fn().mockResolvedValue({
+      authenticated: true,
+      accessToken: 'access-token',
+      user: USER,
+    })
+    mocks.loadSealedSession.mockReturnValue({ authenticate, refresh: vi.fn() })
+
+    mocks.getRequest.mockReturnValue(new Request('http://localhost:3000/'))
+    await getSession()
+    mocks.getRequest.mockReturnValue(new Request('http://localhost:3000/'))
+    await getSession()
+
+    expect(authenticate).toHaveBeenCalledTimes(2)
   })
 })

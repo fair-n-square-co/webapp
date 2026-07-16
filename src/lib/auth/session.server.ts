@@ -1,7 +1,7 @@
 import { WorkOS } from '@workos-inc/node'
 import type { User } from '@workos-inc/node'
 import { redirect } from '@tanstack/react-router'
-import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server'
+import { deleteCookie, getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { getWorkOSConfig } from './config.server'
 
 /**
@@ -77,14 +77,47 @@ export function takeOAuthStateCookie(): string | undefined {
   return state
 }
 
+/** One session resolution per server request, shared by every caller on that request. */
+const sessionByRequest = new WeakMap<Request, Promise<Session | null>>()
+
 /**
  * Resolve the current session, or `null` if the caller is not signed in.
  *
+ * Resolved **once per request**: route loaders run in parallel, so a request can have
+ * several of them asking for the session at the same time. Resolving it twice is not
+ * just duplicate work — an expired access token would be refreshed twice concurrently,
+ * and refresh tokens are single-use, so the second refresh fails and signs the
+ * visitor out. All callers on one request share one resolution instead.
+ */
+export function getSession(): Promise<Session | null> {
+  const request = currentRequest()
+  if (!request) {
+    return resolveSession()
+  }
+
+  let session = sessionByRequest.get(request)
+  if (!session) {
+    session = resolveSession()
+    sessionByRequest.set(request, session)
+  }
+  return session
+}
+
+/** The current request, or `undefined` outside request scope (where memoizing is moot). */
+function currentRequest(): Request | undefined {
+  try {
+    return getRequest()
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * WorkOS access tokens expire after a few minutes, so an unauthenticated result
  * is retried once through the refresh token before giving up. A successful
  * refresh re-seals the cookie, which is why this can mutate the response.
  */
-export async function getSession(): Promise<Session | null> {
+async function resolveSession(): Promise<Session | null> {
   const sessionData = getCookie(SESSION_COOKIE_NAME)
   if (!sessionData) {
     return null
