@@ -14,8 +14,12 @@ export const Route = createFileRoute('/auth/login')({
         const state = createOAuthState()
         setOAuthStateCookie(state)
 
+        // `authkit` renders WorkOS's hosted login UI, which offers passkeys, email,
+        // and any social providers enabled in the dashboard. Naming a specific
+        // provider (e.g. `GoogleOAuth`) would skip that screen and jump straight to
+        // Google, so passkeys would never be offered.
         const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
-          provider: 'GoogleOAuth',
+          provider: 'authkit',
           clientId,
           redirectUri,
           state,

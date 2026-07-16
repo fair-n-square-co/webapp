@@ -124,7 +124,12 @@ export async function getSession(): Promise<Session | null> {
 export async function requireSession(): Promise<Session> {
   const session = await getSession()
   if (!session) {
-    throw redirect({ to: '/auth/login' })
+    // `/auth/login` is a server-only route (a GET handler that 302s to WorkOS, no
+    // client component). `reloadDocument` forces a full-page navigation so the
+    // browser hits that handler; a client-side redirect would resolve to a route
+    // with nothing to render and fall through to the router's NotFound. On the SSR
+    // path this is already emitted as a real 307, so `reloadDocument` is a no-op there.
+    throw redirect({ href: '/auth/login', reloadDocument: true })
   }
   return session
 }
