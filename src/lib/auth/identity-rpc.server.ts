@@ -4,7 +4,7 @@ import {
   IdentityService,
   ResolveUserResponse_Resolution,
 } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/authx_api_pb'
-import { createAuthServiceTransport } from './transport.server'
+import { createAuthServiceTransport } from '../rpc/transport.server'
 
 /**
  * The BFF's connectRPC client for the Go auth service's `IdentityService` (ADR-4).

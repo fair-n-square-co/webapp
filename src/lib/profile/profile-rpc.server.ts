@@ -1,8 +1,8 @@
 import { createClient } from '@connectrpc/connect'
 import { Code, ConnectError } from '@connectrpc/connect'
 import { ProfileService } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/profile_api_pb'
-import { createAuthServiceTransport } from './transport.server'
-import type { UserProfile } from '../profile/types'
+import { createAuthServiceTransport } from '../rpc/transport.server'
+import type { UserProfile } from './types'
 
 /**
  * The BFF's connectRPC client for the Go auth service's `ProfileService` (ADR-4).

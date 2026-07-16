@@ -3,9 +3,9 @@ import { OauthException } from '@workos-inc/node'
 import type * as WorkOSModule from '@workos-inc/node'
 import { ResolveUserResponse_Resolution } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/authx_api_pb'
 import { server } from '../test/msw/server'
+import { TEST_AUTH_SERVICE_BASE_URL } from '../test/msw/auth-service'
 import {
   STALL_MS,
-  TEST_AUTH_SERVICE_BASE_URL,
   resolveUserHandler,
   type RecordedResolveUser,
   type ResolveUserOutcome,

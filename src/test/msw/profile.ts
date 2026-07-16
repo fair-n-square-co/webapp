@@ -5,6 +5,7 @@ import {
   GetProfileRequestSchema,
   GetProfileResponseSchema,
 } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/profile_api_pb'
+import { authServiceMethodUrl } from './auth-service'
 
 /**
  * MSW handlers for the auth service's `ProfileService`, mocked at the wire (§9)
@@ -16,11 +17,7 @@ import {
  * the message shape wrong — the contract worth guarding.
  */
 
-/** Matches `AUTH_SERVICE_BASE_URL` in the tests that install these handlers. */
-export const TEST_AUTH_SERVICE_BASE_URL = 'http://auth.test'
-
-// Connect addresses a unary method as POST <baseUrl>/<package>.<Service>/<Method>.
-const GET_PROFILE_URL = `${TEST_AUTH_SERVICE_BASE_URL}/fairnsquare.service.authx.v1alpha1.ProfileService/GetProfile`
+const GET_PROFILE_URL = authServiceMethodUrl('ProfileService', 'GetProfile')
 
 /** What the BFF actually put on the wire, so a test can assert on it. */
 export type RecordedGetProfile = Readonly<{

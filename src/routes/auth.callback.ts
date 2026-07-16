@@ -10,7 +10,7 @@ import {
   setSessionCookie,
   takeOAuthStateCookie,
 } from '../lib/auth/session.server'
-import { resolveUser } from '../lib/rpc/identity.server'
+import { resolveUser } from '../lib/auth/identity-rpc.server'
 import { redirectResponse } from '../lib/http'
 
 // Server-only: no `component`, so the client route tree never imports this file.

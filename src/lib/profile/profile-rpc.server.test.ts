@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { server } from '../../test/msw/server'
+import { TEST_AUTH_SERVICE_BASE_URL } from '../../test/msw/auth-service'
 import {
-  TEST_AUTH_SERVICE_BASE_URL,
   getProfileHandler,
   type GetProfileOutcome,
   type RecordedGetProfile,
 } from '../../test/msw/profile'
-import { getProfile } from './profile.server'
+import { getProfile } from './profile-rpc.server'
 
 // The BFF boundary for GetProfile, exercised at the wire: a real Connect request the
 // MSW handler decodes with the generated schema, and a real Connect reply the client

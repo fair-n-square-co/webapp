@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import type { UserProfile } from './types'
 import { requireSession } from '../auth/session.server'
-import { getProfile } from '../rpc/profile.server'
+import { getProfile } from './profile-rpc.server'
 
 /**
  * The seam between TanStack Query and the BFF for the read-only profile.
