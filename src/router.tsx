@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { createRouter } from '@tanstack/react-router'
+import { createRouter, isRedirect } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 import { NotFound } from './components/NotFound'
@@ -18,10 +18,19 @@ import { ErrorScreen } from './components/ErrorScreen'
 export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
-      // Data hydrated from the server is fresh; without a stale window every
-      // suspense query would refetch the instant it mounts, undoing the point of
-      // dehydrating it. A short window covers the initial paint and normal reads.
-      queries: { staleTime: 60_000 },
+      queries: {
+        // Data hydrated from the server is fresh; without a stale window every
+        // suspense query would refetch the instant it mounts, undoing the point of
+        // dehydrating it. A short window covers the initial paint and normal reads.
+        staleTime: 60_000,
+        // A server function that session-gates (e.g. `fetchProfile`) rejects with a
+        // *redirect*, not a failure. Retrying one is pointless — the answer will not
+        // change — and the router can only act on it (see `handleRedirects` in the
+        // SSR-query integration) once retries are exhausted. Without this guard, a
+        // signed-out visitor client-navigating to a gated screen would sit through
+        // three retries with backoff before being sent to login.
+        retry: (failureCount, error) => !isRedirect(error) && failureCount < 3,
+      },
     },
   })
 
