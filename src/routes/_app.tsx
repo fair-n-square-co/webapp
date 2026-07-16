@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { AppShell } from '../components/AppShell'
 import { sessionUserQueryOptions } from '../lib/auth/session-user'
@@ -21,8 +22,11 @@ export const Route = createFileRoute('/_app')({
 })
 
 function AppLayout() {
+  // Primed by this route's loader, so this reads straight from the cache. The shell
+  // gets it as a prop and stays a purely presentational component.
+  const { data: sessionUser } = useSuspenseQuery(sessionUserQueryOptions())
   return (
-    <AppShell>
+    <AppShell sessionUser={sessionUser}>
       <Outlet />
     </AppShell>
   )

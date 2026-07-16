@@ -45,6 +45,20 @@ export function ProfileScreen() {
             <span className="value unset">Not set yet</span>
           )}
         </div>
+        <div className="row">
+          <span className="grow">
+            <span className="title">Session</span>
+            <span className="meta">Sign out of Fair n Square on this device.</span>
+          </span>
+          {/* Logout is a POST route (a GET would be CSRF-able), so it must be a form
+              submit, not a link. Also the only log-out reachable on mobile, where the
+              sidebar (and its account area) does not exist. */}
+          <form method="post" action="/auth/logout">
+            <button type="submit" className="btn-danger-ghost">
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
 
       <p className="eyebrow">About</p>

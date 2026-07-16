@@ -32,12 +32,12 @@ describe('Home', () => {
     expect(screen.getByRole('heading', { level: 1, name: /fair.*square/i })).toBeInTheDocument()
   })
 
-  it('shows the signed-in name, email and a log-out control', () => {
+  it('shows the signed-in name and email', () => {
+    // Log out lives in the shell's account area (see AppShell.test.tsx), not here.
     renderHome({ name: 'Ada Lovelace', email: 'ada@example.com' })
 
     expect(screen.getByRole('heading', { level: 2, name: 'Ada Lovelace' })).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
     // The login call-to-action is not shown while signed in.
     expect(screen.queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument()
   })
@@ -57,6 +57,5 @@ describe('Home', () => {
     expect(login).toBeInTheDocument()
     // A full-page navigation to the server-only login route, not a client <Link>.
     expect(login).toHaveAttribute('href', '/auth/login')
-    expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
   })
 })

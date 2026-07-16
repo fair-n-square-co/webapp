@@ -50,6 +50,16 @@ describe('ProfileScreen', () => {
     expect(screen.queryByText('@')).not.toBeInTheDocument()
   })
 
+  it('offers a log-out control in the account section', () => {
+    // The only log-out reachable on mobile, where the sidebar's account area
+    // does not exist. It must POST (a GET would be CSRF-able).
+    renderProfile(BASE_PROFILE)
+
+    const logout = screen.getByRole('button', { name: 'Log out' })
+    expect(logout.closest('form')).toHaveAttribute('action', '/auth/logout')
+    expect(logout.closest('form')).toHaveAttribute('method', 'post')
+  })
+
   it('falls back to a placeholder name when the display name is empty', () => {
     renderProfile({ ...BASE_PROFILE, displayName: '' })
 

@@ -21,21 +21,14 @@ export function Home() {
       </div>
 
       {sessionUser ? (
+        // Log out lives in the shell's sidebar account area (and in the profile
+        // screen's account row on mobile) — this card only shows who you are.
         <IdentityCard
           name={sessionUser.name}
           placeholder="Signed in"
           email={sessionUser.email}
           colorSeed={sessionUser.email}
-        >
-          {/* Logout is a POST route (a GET would be CSRF-able), so it must be a form
-              submit, not a link. The full-page POST hits the server handler, which
-              clears the session and redirects. */}
-          <form method="post" action="/auth/logout">
-            <button type="submit" className="btn-ghost">
-              Log out
-            </button>
-          </form>
-        </IdentityCard>
+        />
       ) : (
         // A plain anchor, not a <Link>: `/auth/login` is a server-only route (a GET
         // handler that 302s to WorkOS, no client component). It needs a full-page

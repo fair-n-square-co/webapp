@@ -305,6 +305,56 @@ h3 {
   .sidebar .spacer {
     flex: 1;
   }
+
+  /* The log in/out corner at the bottom of the sidebar. */
+  .sidebar .account {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 12px 12px;
+    margin-bottom: 6px;
+    border-top: 1px solid var(--line);
+  }
+
+  .sidebar .account-id {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .sidebar .account .who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .sidebar .account .name {
+    font-weight: 600;
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar .account .email {
+    color: var(--ink-soft);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Full-width buttons so the corner reads as one block, whichever state it is in. */
+  .sidebar .account form {
+    display: flex;
+  }
+
+  .sidebar .account .btn-ghost,
+  .sidebar .account .btn-primary {
+    flex: 1;
+    width: 100%;
+  }
 }
 
 /* ————— Brand ————— */
@@ -414,6 +464,29 @@ h3 {
 .btn-ghost:hover {
   background: var(--teal-wash);
   color: var(--teal-text);
+}
+
+/* A destructive-but-quiet action (log out): clay text, fills with the clay tint on
+   hover. Ported from the POC's `.btn.danger-ghost`. */
+.btn-danger-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--clay-text);
+  border: 1px solid var(--line-strong);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn-danger-ghost:hover {
+  border-color: var(--clay);
+  background: var(--clay-tint);
 }
 
 /* ————— Identity card ————— */
