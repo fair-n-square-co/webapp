@@ -9,7 +9,7 @@ import type { UserProfile } from '../lib/profile/types'
 // The screen reads the profile with `useSuspenseQuery`, exactly as it does in the
 // app after the loader has warmed the cache. Here we seed the same cache directly so
 // the render is what we assert on — the BFF/network boundary is covered at the wire
-// in `profile.server.test.ts`. `staleTime: Infinity` keeps the seeded data from being
+// in `profile-rpc.server.test.ts`. `staleTime: Infinity` keeps the seeded data from being
 // treated as stale and refetched, mirroring the hydrated-and-fresh production path.
 function renderProfile(profile: UserProfile) {
   const queryClient = new QueryClient({
