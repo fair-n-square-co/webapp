@@ -34,8 +34,9 @@ export const fetchSessionUser = createServerFn({ method: 'GET' }).handler(
 )
 
 /**
- * Query options for the current session user. Shared by the route loader (prefetch →
- * dehydrated into the SSR markup) and the screen (reads it back, no refetch).
+ * Query options for the current session user. The `_app` layout loader primes this
+ * once for every screen under the shell (prefetch → dehydrated into the SSR markup);
+ * any screen reads it back with `useSuspenseQuery`, no refetch and no loader of its own.
  */
 export function sessionUserQueryOptions() {
   return queryOptions({

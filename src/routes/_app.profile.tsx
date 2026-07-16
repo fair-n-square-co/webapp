@@ -7,8 +7,12 @@ import { profileQueryOptions } from '../lib/profile/profile-query'
 // the server so it dehydrates into the SSR markup; the fetch is a server function
 // that calls `requireSession()`, so an anonymous visitor is redirected to login and
 // the profile RPC (and the WorkOS token) never reach the client. The router owns the
-// redirect — it unwinds this loader — while Query owns the data.
+// redirect — it unwinds this loader — while Query owns the data. Nothing is returned:
+// the data would be serialized into the loader payload as well, and the dehydrated
+// query stream already carries it to the client.
 export const Route = createFileRoute('/_app/profile')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(profileQueryOptions()),
+  loader: async ({ context }): Promise<void> => {
+    await context.queryClient.ensureQueryData(profileQueryOptions())
+  },
   component: ProfileScreen,
 })

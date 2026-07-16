@@ -1,11 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { sessionUserQueryOptions } from '../lib/auth/session-user'
 import { Home } from '../components/Home'
 
-// A route file should export only `Route`. Anything else it exports is pulled out
-// of the route's lazy chunk, and the router warns about it. Keeping the component
-// in `components/` also keeps it free of route/data coupling and directly testable.
+// No loader: the session user Home renders is app-level state, primed by the `_app`
+// layout's loader for every screen under the shell. A route file should export only
+// `Route`; the component lives in `components/`, free of route/data coupling.
 export const Route = createFileRoute('/_app/')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(sessionUserQueryOptions()),
   component: Home,
 })
