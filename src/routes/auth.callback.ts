@@ -4,8 +4,13 @@ import { OauthException } from '@workos-inc/node'
 import type { User } from '@workos-inc/node'
 import { getWorkOSConfig } from '../lib/auth/config.server'
 import { isSameOAuthState } from '../lib/auth/oauth-state'
-import { getWorkOS, setSessionCookie, takeOAuthStateCookie } from '../lib/auth/session.server'
-import { resolveUser } from '../lib/rpc/identity.server'
+import {
+  getWorkOS,
+  getWorkOSLogoutUrl,
+  setSessionCookie,
+  takeOAuthStateCookie,
+} from '../lib/auth/session.server'
+import { resolveUser } from '../lib/auth/identity-rpc.server'
 import { redirectResponse } from '../lib/http'
 
 // Server-only: no `component`, so the client route tree never imports this file.
@@ -67,16 +72,18 @@ export const Route = createFileRoute('/auth/callback')({
           // downstream call would fail in ways much harder to read than this. Send them
           // back to a retry rather than into an app that cannot serve them.
           console.error('ResolveUser failed; refusing to establish the session', error)
-          // No `Retry-After`: that invites a retry of *this* request, which cannot work.
-          // The state cookie is spent and the authorization code is single-use, so the
-          // only way forward is a fresh login — link them to one rather than imply the
-          // callback is worth hitting again.
-          return new Response(
-            `<!doctype html><meta charset="utf-8"><title>Sign-in failed</title>` +
-              `<p>We couldn't finish setting up your account. ` +
-              `<a href="/auth/login">Please try signing in again.</a></p>`,
-            { status: 503, headers: { 'content-type': 'text/html; charset=utf-8' } },
-          )
+          // We authenticated the visitor at WorkOS but can't provision them here. End
+          // the WorkOS session too and return to the in-app failure page: leaving its
+          // SSO cookie alive would silently re-authenticate the same identity on the
+          // next attempt, looping the failure with no account picker. We never set our
+          // own session cookie, so there is nothing of ours to clear. If the logout URL
+          // can't be built, fall back to the failure page directly.
+          const failurePath = '/signin-failed'
+          const logoutUrl = await getWorkOSLogoutUrl({
+            sessionData: sealedSession,
+            returnTo: `${url.origin}${failurePath}`,
+          })
+          return redirectResponse(logoutUrl ?? failurePath)
         }
 
         setSessionCookie(sealedSession)

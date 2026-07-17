@@ -7,6 +7,12 @@ export default defineConfig({
   // A stray `.only` would otherwise green CI while skipping every other test.
   forbidOnly: !!process.env['CI'],
   use: { baseURL: 'http://localhost:3000' },
+  // The warmup project absorbs `vite dev`'s first-load dependency optimization
+  // (see e2e/warmup.setup.ts) so it cannot land mid-spec on a cold CI runner.
+  projects: [
+    { name: 'warmup', testMatch: /warmup\.setup\.ts/ },
+    { name: 'chromium', testMatch: /.*\.spec\.ts/, dependencies: ['warmup'] },
+  ],
   webServer: {
     command: 'bun run dev',
     port: 3000,

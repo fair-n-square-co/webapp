@@ -13,7 +13,9 @@ test('GET /auth/login redirects to WorkOS and issues a state cookie', async ({ r
 
   const authorizeUrl = new URL(location)
   expect(authorizeUrl.host).toBe('api.workos.com')
-  expect(authorizeUrl.searchParams.get('provider')).toBe('GoogleOAuth')
+  // `authkit` is WorkOS's hosted login screen (passkeys, email, and every enabled
+  // social provider) — naming a single provider here would skip that screen.
+  expect(authorizeUrl.searchParams.get('provider')).toBe('authkit')
   expect(authorizeUrl.searchParams.get('redirect_uri')).toBe('http://localhost:3000/auth/callback')
 
   const state = authorizeUrl.searchParams.get('state') ?? ''

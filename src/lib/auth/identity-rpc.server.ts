@@ -1,18 +1,16 @@
 import { createClient } from '@connectrpc/connect'
-import type { Client, Interceptor } from '@connectrpc/connect'
-import { createConnectTransport } from '@connectrpc/connect-web'
+import type { Client } from '@connectrpc/connect'
 import {
   IdentityService,
   ResolveUserResponse_Resolution,
 } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/authx_api_pb'
-import { getAuthServiceConfig } from '../auth/config.server'
+import { createAuthServiceTransport } from '../rpc/transport.server'
 
 /**
- * The BFF's connectRPC client for the Go auth service (ADR-4).
+ * The BFF's connectRPC client for the Go auth service's `IdentityService` (ADR-4).
  *
- * Server-only. The WorkOS access token never leaves this process: it is attached
- * to each call as `Authorization: Bearer <token>` metadata, and the service derives
- * the caller's issuer/subject from it rather than trusting anything in the body.
+ * Server-only. The transport and its bearer-token interceptor are shared with every
+ * other auth-service client — see {@link createAuthServiceTransport}.
  */
 
 /** How `ResolveUser` resolved the identity — both outcomes are a successful login. */
@@ -25,39 +23,8 @@ export type ResolvedUser = Readonly<{
   resolution: UserResolution
 }>
 
-function bearerToken(accessToken: string): Interceptor {
-  return (next) => (req) => {
-    req.header.set('Authorization', `Bearer ${accessToken}`)
-    return next(req)
-  }
-}
-
-/**
- * A client is built per call rather than cached: the bearer token is baked into the
- * interceptor, so a shared client would forward one user's token on another's call.
- * The transport is a thin wrapper over `fetch`, so building one is cheap.
- *
- * `connect-web`, not `connect-node`, despite this running on the server: it is the
- * fetch-based transport, and this server is already fetch-native (the Start runtime
- * hands us `Request`/`Response`). connect-node instead reaches for `node:http`
- * directly, which buys us HTTP/2 we don't need for unary calls and costs us a
- * transport no `fetch` interceptor — MSW in tests, tracing later — can see.
- */
 function createIdentityClient(accessToken: string): Client<typeof IdentityService> {
-  const { baseUrl, timeoutMs } = getAuthServiceConfig()
-
-  const transport = createConnectTransport({
-    baseUrl,
-    // This transport defaults to JSON, which exists to keep payloads debuggable in a
-    // browser's network tab. Nothing here is server→server debuggable that way, so take
-    // the binary wire format the Go service already speaks.
-    useBinaryFormat: true,
-    // A call with no deadline can hang the login for as long as the auth service stalls.
-    defaultTimeoutMs: timeoutMs,
-    interceptors: [bearerToken(accessToken)],
-  })
-
-  return createClient(IdentityService, transport)
+  return createClient(IdentityService, createAuthServiceTransport(accessToken))
 }
 
 /**

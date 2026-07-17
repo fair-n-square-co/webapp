@@ -43,12 +43,18 @@ code style lives in [`docs/coding-standards/react-typescript.md`](./docs/coding-
 
 ## Endpoints
 
-- `/` — walking-skeleton landing page.
+- `/` — landing page; shows who is signed in, or a log-in call to action.
+- `/profile` — the signed-in user's read-only profile. Session-gated: an anonymous
+  visitor is redirected to `/auth/login` by the route loader, on the server.
+- `/signin-failed` — where the OAuth callback lands a visitor it verified but could
+  not provision (see below); offers a retry.
 - `/healthz` — liveness for the ALB target group (200 = server up + SSR renders).
 
 Auth (server-only handlers; no client bundle, no component):
 
-- `GET /auth/login` — issues an OAuth `state` cookie, redirects to WorkOS AuthKit (Google).
+- `GET /auth/login` — issues an OAuth `state` cookie, redirects to WorkOS AuthKit's
+  hosted login screen (passkeys, email, and every social provider enabled in the
+  dashboard).
 - `GET /auth/callback` — verifies `state`, exchanges the code, provisions the canonical
   user, then seals the session cookie.
 - `POST /auth/logout` — clears the session cookie, redirects to the WorkOS logout URL.
@@ -63,8 +69,10 @@ ResolveUser` on the auth service, which JIT-provisions the canonical user on fir
 and returns the existing one on every login after. The access token travels in
 `Authorization` metadata and only the email is in the body (ADR-4: the service trusts the
 token, not the request fields). The cookie is set **after** that call succeeds — a visitor
-with a WorkOS session but no canonical user is half-authenticated, so a provisioning
-failure yields a 503 and a retry, never a broken session.
+with a WorkOS session but no canonical user is half-authenticated, so on a provisioning
+failure the callback refuses the session, ends the WorkOS session too (its SSO cookie
+would otherwise silently re-authenticate the same identity on retry), and lands the
+visitor on `/signin-failed` — never a broken session.
 
 ## Docker
 
@@ -83,9 +91,9 @@ that needs a hosting adapter to inject the client manifest and serve `dist/clien
 
 ## Roadmap (this scaffold = FNS-138)
 
-- **FNS-91** — WorkOS AuthKit login + session in the BFF. Login, callback, logout and the
-  sealed session cookie are done; JIT-provisioning the canonical user via
-  `IdentityService.ResolveUser` is still to come, and waits on the `apis` TS package
-  being published to GitHub Packages.
-- **FNS-94** — profile view/edit/preferences, consuming `authx.ProfileService` (FNS-93, done).
+- **FNS-91** — WorkOS AuthKit login + session in the BFF. Done: login, callback, logout,
+  the sealed session cookie, and JIT-provisioning the canonical user via
+  `IdentityService.ResolveUser` (FNS-91b).
+- **FNS-94** — profile view/edit/preferences, consuming `authx.ProfileService` (FNS-93,
+  done). The read-only view is done (FNS-94a); edit and preferences are still to come.
 - **FNS-111** — production multi-stage Docker build + SSR asset serving.
