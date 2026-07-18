@@ -185,6 +185,35 @@ describe('ProfileScreen (edit mode)', () => {
     expect(screen.queryByRole('button', { name: 'Edit profile' })).not.toBeInTheDocument()
   })
 
+  it('surfaces a form-level conflict when the taken field is unknown', async () => {
+    // The service reports AlreadyExists without naming a field, so the BFF returns
+    // `unknown`; the editor must not mislabel an input and shows a form-level message.
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    saveProfileMock.mockResolvedValueOnce({
+      status: 'alreadyExists',
+      field: 'unknown',
+    } satisfies SaveProfileResult)
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('That username or email is already in use.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+  })
+
+  it('shows a persisted currency that is outside the offered list rather than a blank select', async () => {
+    // A currency set by another client may not be one of the offered codes. It must
+    // still appear as the selected value, not leave the control blank (which reads as
+    // "no default" when a default is in fact set).
+    renderProfile({ ...BASE_PROFILE, preferredCurrency: 'CHF' })
+    await openEditor()
+
+    const currency = screen.getByLabelText<HTMLSelectElement>('Default currency')
+    expect(currency.value).toBe('CHF')
+    expect(screen.getByRole('option', { name: 'CHF' })).toBeInTheDocument()
+  })
+
   it('shows a validation error for an invalid email and fires no request', async () => {
     renderProfile(BASE_PROFILE)
     const user = await openEditor()

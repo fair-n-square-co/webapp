@@ -226,6 +226,26 @@ describe('updateProfile', () => {
     expect(result).toEqual({ status: 'alreadyExists', field: 'email' })
   })
 
+  it('falls back to an unknown conflict field when the message names neither', async () => {
+    // The service says AlreadyExists but its message implicates no field; the BFF must
+    // not mislabel one, so the UI gets `unknown` and shows a form-level error instead.
+    updateServiceAnswers({ kind: 'alreadyExists', field: 'unknown' })
+
+    const result = await updateProfile({ accessToken: ACCESS_TOKEN, input: DRAFT })
+
+    expect(result).toEqual({ status: 'alreadyExists', field: 'unknown' })
+  })
+
+  it('treats NotFound as a fault rather than a result the user can edit away', async () => {
+    // A provisioned user always exists, so NotFound on update is the same broken
+    // invariant getProfile guards against — thrown, not returned as a typed result.
+    updateServiceAnswers({ kind: 'notFound' })
+
+    await expect(updateProfile({ accessToken: ACCESS_TOKEN, input: DRAFT })).rejects.toThrow(
+      /NotFound|provisioned/,
+    )
+  })
+
   it('maps a validation failure to an invalidArgument result carrying the message', async () => {
     updateServiceAnswers({ kind: 'invalidArgument', message: 'username must be 3-30 characters' })
 

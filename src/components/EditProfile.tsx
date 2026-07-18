@@ -107,6 +107,14 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
   const isSaving = mutation.isPending
   const usernameIsEmpty = username.trim() === ''
 
+  // A currency persisted by another client can fall outside the offered list. Inject
+  // the current value as an extra option so the control shows it, rather than rendering
+  // a blank/unselected select that reads as "no default" when a default is in fact set.
+  const currencyOptions =
+    preferredCurrency && !CURRENCY_OPTIONS.some((option) => option.code === preferredCurrency)
+      ? [...CURRENCY_OPTIONS, { code: preferredCurrency, label: preferredCurrency }]
+      : CURRENCY_OPTIONS
+
   return (
     <form className="edit-form" onSubmit={handleSubmit} noValidate>
       <div className="card form-card">
@@ -176,7 +184,7 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
             value={preferredCurrency}
             onChange={(event) => setPreferredCurrency(event.target.value)}
           >
-            {CURRENCY_OPTIONS.map((option) => (
+            {currencyOptions.map((option) => (
               <option key={option.code || 'none'} value={option.code}>
                 {option.label}
               </option>

@@ -103,10 +103,16 @@ export type RecordedUpdateProfile = Readonly<{
 
 export type UpdateProfileOutcome =
   | Readonly<{ kind: 'ok'; profile: WireProfile }>
-  /** A username or email already taken by another user. `field` shapes the error message. */
-  | Readonly<{ kind: 'alreadyExists'; field: 'username' | 'email' }>
+  /**
+   * A username or email already taken by another user. `field` shapes the error
+   * message: 'username'/'email' name the offending field, 'unknown' returns a
+   * conflict message that names neither, so the BFF must fall back to `unknown`.
+   */
+  | Readonly<{ kind: 'alreadyExists'; field: 'username' | 'email' | 'unknown' }>
   /** A server-side validation failure. */
   | Readonly<{ kind: 'invalidArgument'; message?: string }>
+  /** The caller has no profile. Impossible after login, so the BFF treats it as a fault. */
+  | Readonly<{ kind: 'notFound' }>
   | Readonly<{ kind: 'unavailable' }>
 
 /**
@@ -139,11 +145,20 @@ export function updateProfileHandler(
         { status: 503 },
       )
     }
-    if (outcome.kind === 'alreadyExists') {
+    if (outcome.kind === 'notFound') {
       return HttpResponse.json(
-        { code: 'already_exists', message: `that ${outcome.field} is already taken` },
-        { status: 409 },
+        { code: 'not_found', message: 'no profile for caller' },
+        { status: 404 },
       )
+    }
+    if (outcome.kind === 'alreadyExists') {
+      // 'unknown' deliberately names neither field, so the BFF's message parsing has
+      // nothing to latch onto and must fall back to a form-level conflict.
+      const message =
+        outcome.field === 'unknown'
+          ? 'that value is already taken'
+          : `that ${outcome.field} is already taken`
+      return HttpResponse.json({ code: 'already_exists', message }, { status: 409 })
     }
     if (outcome.kind === 'invalidArgument') {
       return HttpResponse.json(
