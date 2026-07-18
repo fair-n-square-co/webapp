@@ -1,16 +1,33 @@
 import { Suspense } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProfileScreen } from './ProfileScreen'
 import { profileQueryOptions } from '../lib/profile/profile-query'
-import type { UserProfile } from '../lib/profile/types'
+import type { ProfileDraft, SaveProfileResult, UserProfile } from '../lib/profile/types'
 
-// The screen reads the profile with `useSuspenseQuery`, exactly as it does in the
-// app after the loader has warmed the cache. Here we seed the same cache directly so
-// the render is what we assert on — the BFF/network boundary is covered at the wire
-// in `profile-rpc.server.test.ts`. `staleTime: Infinity` keeps the seeded data from being
-// treated as stale and refetched, mirroring the hydrated-and-fresh production path.
+// A TanStack Start server function cannot run under jsdom — it needs the server
+// runtime's Start context — so `saveProfile` is the one seam we replace. It is the
+// client→BFF network boundary; the component test drives it with canned outcomes and
+// asserts what the user sees, while the real wire contract (token forwarding + the
+// full preferences block) is covered at the Connect boundary in
+// `profile-rpc.server.test.ts`.
+const { saveProfileMock } = vi.hoisted(() => ({
+  saveProfileMock: vi.fn<(args: { data: ProfileDraft }) => Promise<SaveProfileResult>>(),
+}))
+
+vi.mock('../lib/profile/profile-query', () => ({
+  saveProfile: saveProfileMock,
+  profileQueryOptions: () => ({
+    queryKey: ['profile'] as const,
+    // Seeded directly in every test, so this must never actually run.
+    queryFn: (): never => {
+      throw new Error('profileQueryOptions.queryFn should not be called in these tests')
+    },
+  }),
+}))
+
 function renderProfile(profile: UserProfile) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
@@ -31,9 +48,16 @@ const BASE_PROFILE: UserProfile = {
   username: 'ada',
   displayName: 'Ada Lovelace',
   email: 'ada@example.com',
+  preferredCurrency: 'AUD',
+  locale: 'en-AU',
+  timezone: 'Australia/Sydney',
 }
 
-describe('ProfileScreen', () => {
+beforeEach(() => {
+  saveProfileMock.mockReset()
+})
+
+describe('ProfileScreen (read-only view)', () => {
   it('shows the display name, username handle and email', () => {
     renderProfile(BASE_PROFILE)
 
@@ -66,5 +90,113 @@ describe('ProfileScreen', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Unnamed' })).toBeInTheDocument()
     // The email is still the real one — only the name is missing.
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
+  })
+})
+
+async function openEditor(): Promise<ReturnType<typeof userEvent.setup>> {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Edit profile' }))
+  return user
+}
+
+describe('ProfileScreen (edit mode)', () => {
+  it('saves an edited display name and reflects it in the refreshed view', async () => {
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    const nameInput = screen.getByLabelText('Display name')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Ada Byron')
+
+    saveProfileMock.mockResolvedValueOnce({
+      status: 'ok',
+      profile: { ...BASE_PROFILE, displayName: 'Ada Byron' },
+    } satisfies SaveProfileResult)
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    // The refreshed cache drives the view: back to read-only with the new name.
+    expect(await screen.findByRole('heading', { level: 2, name: 'Ada Byron' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit profile' })).toBeInTheDocument()
+    const draft = saveProfileMock.mock.calls[0]?.[0].data
+    expect(draft?.displayName).toBe('Ada Byron')
+    expect(draft?.email).toBe('ada@example.com')
+  })
+
+  it('saves with an empty username and does not block the other edits', async () => {
+    // The optional-when-empty payoff: clearing the username is a valid save, and the
+    // full-replace payload still carries the untouched locale/timezone.
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    await user.clear(screen.getByLabelText('Username'))
+
+    saveProfileMock.mockResolvedValueOnce({
+      status: 'ok',
+      profile: { ...BASE_PROFILE, username: '' },
+    } satisfies SaveProfileResult)
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Not set yet')).toBeInTheDocument()
+    // The full-replace payload carries the empty username AND the untouched
+    // locale/timezone, so the save neither is blocked nor clobbers preferences.
+    const draft = saveProfileMock.mock.calls[0]?.[0].data
+    expect(draft?.username).toBe('')
+    expect(draft?.locale).toBe('en-AU')
+    expect(draft?.timezone).toBe('Australia/Sydney')
+    // The display name and email were not lost by clearing the username.
+    expect(screen.getByRole('heading', { level: 2, name: 'Ada Lovelace' })).toBeInTheDocument()
+  })
+
+  it('surfaces a taken username inline and stays in edit mode', async () => {
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    saveProfileMock.mockResolvedValueOnce({
+      status: 'alreadyExists',
+      field: 'username',
+    } satisfies SaveProfileResult)
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('That username is already taken.')).toBeInTheDocument()
+    // Still editing so the user can pick a different handle.
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+  })
+
+  it('shows a validation error for an invalid email and fires no request', async () => {
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    const emailInput = screen.getByLabelText('Email')
+    await user.clear(emailInput)
+    await user.type(emailInput, 'not-an-email')
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Enter a valid email address.')).toBeInTheDocument()
+    expect(saveProfileMock).not.toHaveBeenCalled()
+  })
+
+  it('disables the submit control and shows a saving state while the mutation is in flight', async () => {
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    let releaseSave: (result: SaveProfileResult) => void = () => {}
+    saveProfileMock.mockReturnValueOnce(
+      new Promise<SaveProfileResult>((resolve) => {
+        releaseSave = resolve
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    const saving = await screen.findByRole('button', { name: 'Saving…' })
+    expect(saving).toBeDisabled()
+
+    // Let it settle so the test leaves no pending state behind.
+    releaseSave({ status: 'ok', profile: BASE_PROFILE })
+    expect(await screen.findByRole('button', { name: 'Edit profile' })).toBeInTheDocument()
   })
 })

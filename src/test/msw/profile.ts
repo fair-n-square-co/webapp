@@ -4,6 +4,8 @@ import { create, fromBinary, toBinary } from '@bufbuild/protobuf'
 import {
   GetProfileRequestSchema,
   GetProfileResponseSchema,
+  UpdateProfileRequestSchema,
+  UpdateProfileResponseSchema,
 } from '@fair-n-square-co/apis/fairnsquare/service/authx/v1alpha1/profile_api_pb'
 import { authServiceMethodUrl } from './auth-service'
 
@@ -30,6 +32,11 @@ export type WireProfile = Readonly<{
   username?: string
   displayName?: string
   email?: string
+  preferences?: Readonly<{
+    preferredCurrency?: string
+    locale?: string
+    timezone?: string
+  }>
 }>
 
 export type GetProfileOutcome =
@@ -72,6 +79,81 @@ export function getProfileHandler(
         : create(GetProfileResponseSchema, { profile: outcome.profile })
 
     return HttpResponse.arrayBuffer(toBinary(GetProfileResponseSchema, response).buffer, {
+      headers: { 'content-type': 'application/proto' },
+    })
+  })
+}
+
+const UPDATE_PROFILE_URL = authServiceMethodUrl('ProfileService', 'UpdateProfile')
+
+/**
+ * What the BFF actually put on the wire for an update, so a test can assert both that
+ * the access token rode along AND that the full desired state — including the
+ * preferences block with the preserved locale/timezone — was sent (full-replace).
+ */
+export type RecordedUpdateProfile = Readonly<{
+  authorization: string | null
+  username: string
+  displayName: string
+  email: string
+  preferredCurrency: string
+  locale: string
+  timezone: string
+}>
+
+export type UpdateProfileOutcome =
+  | Readonly<{ kind: 'ok'; profile: WireProfile }>
+  /** A username or email already taken by another user. `field` shapes the error message. */
+  | Readonly<{ kind: 'alreadyExists'; field: 'username' | 'email' }>
+  /** A server-side validation failure. */
+  | Readonly<{ kind: 'invalidArgument'; message?: string }>
+  | Readonly<{ kind: 'unavailable' }>
+
+/**
+ * Handle `UpdateProfile` with the given outcome, appending each decoded request to
+ * `calls` so a test can assert on the token and the full payload it carried.
+ */
+export function updateProfileHandler(
+  outcome: UpdateProfileOutcome,
+  calls: RecordedUpdateProfile[],
+): RequestHandler {
+  return http.post(UPDATE_PROFILE_URL, async ({ request }) => {
+    // Decode with the generated schema so a malformed request fails the test.
+    const decoded = fromBinary(
+      UpdateProfileRequestSchema,
+      new Uint8Array(await request.arrayBuffer()),
+    )
+    calls.push({
+      authorization: request.headers.get('authorization'),
+      username: decoded.username,
+      displayName: decoded.displayName,
+      email: decoded.email,
+      preferredCurrency: decoded.preferences?.preferredCurrency ?? '',
+      locale: decoded.preferences?.locale ?? '',
+      timezone: decoded.preferences?.timezone ?? '',
+    })
+
+    if (outcome.kind === 'unavailable') {
+      return HttpResponse.json(
+        { code: 'unavailable', message: 'profile service is down' },
+        { status: 503 },
+      )
+    }
+    if (outcome.kind === 'alreadyExists') {
+      return HttpResponse.json(
+        { code: 'already_exists', message: `that ${outcome.field} is already taken` },
+        { status: 409 },
+      )
+    }
+    if (outcome.kind === 'invalidArgument') {
+      return HttpResponse.json(
+        { code: 'invalid_argument', message: outcome.message ?? 'invalid profile' },
+        { status: 400 },
+      )
+    }
+
+    const response = create(UpdateProfileResponseSchema, { profile: outcome.profile })
+    return HttpResponse.arrayBuffer(toBinary(UpdateProfileResponseSchema, response).buffer, {
       headers: { 'content-type': 'application/proto' },
     })
   })
