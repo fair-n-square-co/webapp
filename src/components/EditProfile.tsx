@@ -70,6 +70,13 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
           assertNever(result)
       }
     },
+    onError: () => {
+      // `updateProfile` throws for every fault path — the service being Unavailable,
+      // a NotFound, or a hollow/untrusted reply. None of those are correctable by
+      // editing a field, so surface one generic, retryable message rather than
+      // leaving the form to silently revert. The form stays in edit mode.
+      setFormError('Something went wrong saving your changes. Please try again.')
+    },
   })
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {

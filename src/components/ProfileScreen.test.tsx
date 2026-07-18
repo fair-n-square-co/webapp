@@ -165,6 +165,26 @@ describe('ProfileScreen (edit mode)', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
   })
 
+  it('surfaces a retryable error and stays in edit mode when the save faults', async () => {
+    // `saveProfile` throws for every fault path (Unavailable, NotFound, a hollow
+    // reply). Without an onError handler the user would see 'Saving…' flip back to
+    // 'Save changes' with no message — a silent dead-end. Assert the generic error
+    // shows and the form stays editable so the user can retry.
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    saveProfileMock.mockRejectedValueOnce(new Error('profile service is down'))
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(
+      await screen.findByText('Something went wrong saving your changes. Please try again.'),
+    ).toBeInTheDocument()
+    // Still in edit mode so the user can try again, not bounced back to read-only.
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit profile' })).not.toBeInTheDocument()
+  })
+
   it('shows a validation error for an invalid email and fires no request', async () => {
     renderProfile(BASE_PROFILE)
     const user = await openEditor()
