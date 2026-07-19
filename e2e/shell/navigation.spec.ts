@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { waitForHydration } from './support'
+import { waitForHydration } from '../fixtures/hydration'
 
 // The app shell: sidebar navigation and its log in/out corner. The signed-in state
 // needs a real WorkOS session, which the hermetic e2e env has no way to mint — that

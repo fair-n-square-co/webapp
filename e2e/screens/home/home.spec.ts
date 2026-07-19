@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { waitForHydration } from './support'
+import { waitForHydration } from '../../fixtures/hydration'
 
 // The whole point of this stack is SSR: the server ships real HTML, and the
 // client bundle hydrates it. Component tests render in jsdom and never exercise

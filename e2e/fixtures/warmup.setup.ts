@@ -1,5 +1,5 @@
 import { test } from '@playwright/test'
-import { waitForHydration } from './support'
+import { waitForHydration } from './hydration'
 
 // Not a spec — a setup project every real project depends on (see
 // playwright.config.ts).
