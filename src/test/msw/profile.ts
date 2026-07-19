@@ -106,9 +106,10 @@ export type UpdateProfileOutcome =
   /**
    * A username or email already taken by another user. `field` shapes the error
    * message: 'username'/'email' name the offending field, 'unknown' returns a
-   * conflict message that names neither, so the BFF must fall back to `unknown`.
+   * conflict message that names neither, and 'both' names the two at once — in the
+   * last two cases the BFF must fall back to `unknown` rather than pick a field.
    */
-  | Readonly<{ kind: 'alreadyExists'; field: 'username' | 'email' | 'unknown' }>
+  | Readonly<{ kind: 'alreadyExists'; field: 'username' | 'email' | 'unknown' | 'both' }>
   /** A server-side validation failure. */
   | Readonly<{ kind: 'invalidArgument'; message?: string }>
   /** The caller has no profile. Impossible after login, so the BFF treats it as a fault. */
@@ -152,12 +153,15 @@ export function updateProfileHandler(
       )
     }
     if (outcome.kind === 'alreadyExists') {
-      // 'unknown' deliberately names neither field, so the BFF's message parsing has
-      // nothing to latch onto and must fall back to a form-level conflict.
+      // 'unknown' names neither field and 'both' names them together — either way the
+      // BFF's message parsing has nothing unambiguous to latch onto and must fall back
+      // to a form-level conflict rather than blaming one input.
       const message =
         outcome.field === 'unknown'
           ? 'that value is already taken'
-          : `that ${outcome.field} is already taken`
+          : outcome.field === 'both'
+            ? 'that username or email is already taken'
+            : `that ${outcome.field} is already taken`
       return HttpResponse.json({ code: 'already_exists', message }, { status: 409 })
     }
     if (outcome.kind === 'invalidArgument') {

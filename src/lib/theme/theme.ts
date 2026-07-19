@@ -67,7 +67,19 @@ const THEME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 export function readThemePreference(): ThemePreference {
   const match = document.cookie.match(new RegExp(`(?:^|; )${THEME_COOKIE_NAME}=([^;]*)`))
   const raw = match?.[1]
-  return parseThemePreference(raw ? decodeURIComponent(raw) : undefined)
+  if (!raw) {
+    return ThemePreference.System
+  }
+  // A cookie is attacker- and corruption-reachable, and `decodeURIComponent` throws a
+  // URIError on a malformed escape like '%2'. This runs in a mount effect, so letting
+  // it throw would take the whole screen down over a bad preference cookie. Falling
+  // back to 'system' matches what an absent cookie means — and what the pre-paint init
+  // script already does with its own try/catch.
+  try {
+    return parseThemePreference(decodeURIComponent(raw))
+  } catch {
+    return ThemePreference.System
+  }
 }
 
 /**

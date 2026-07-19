@@ -248,4 +248,30 @@ describe('ProfileScreen (edit mode)', () => {
     releaseSave({ status: 'ok', profile: BASE_PROFILE })
     expect(await screen.findByRole('button', { name: 'Edit profile' })).toBeInTheDocument()
   })
+
+  it('locks the fields while saving so in-flight edits cannot be silently dropped', async () => {
+    // The draft is captured at submit. If the fields stayed editable, anything typed
+    // during the round-trip would never reach the service, and success closes the
+    // editor — discarding those edits with no sign to the user that it happened.
+    renderProfile(BASE_PROFILE)
+    const user = await openEditor()
+
+    let releaseSave: (result: SaveProfileResult) => void = () => {}
+    saveProfileMock.mockReturnValueOnce(
+      new Promise<SaveProfileResult>((resolve) => {
+        releaseSave = resolve
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await screen.findByRole('button', { name: 'Saving…' })
+
+    expect(screen.getByLabelText('Display name')).toBeDisabled()
+    expect(screen.getByLabelText('Username')).toBeDisabled()
+    expect(screen.getByLabelText('Email')).toBeDisabled()
+    expect(screen.getByLabelText('Default currency')).toBeDisabled()
+
+    releaseSave({ status: 'ok', profile: BASE_PROFILE })
+    expect(await screen.findByRole('button', { name: 'Edit profile' })).toBeInTheDocument()
+  })
 })

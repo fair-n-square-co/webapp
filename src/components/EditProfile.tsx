@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactElement } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { profileQueryOptions, saveProfile } from '../lib/profile/profile-query'
 import type { ProfileDraft, SaveProfileResult, UserProfile } from '../lib/profile/types'
@@ -32,7 +33,7 @@ function assertNever(value: never): never {
   throw new Error(`unexpected value: ${JSON.stringify(value)}`)
 }
 
-export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
+export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps): ReactElement {
   const queryClient = useQueryClient()
 
   const [displayName, setDisplayName] = useState(profile.displayName)
@@ -126,6 +127,7 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
             type="text"
             value={displayName}
             autoComplete="name"
+            disabled={isSaving}
             onChange={(event) => setDisplayName(event.target.value)}
           />
         </div>
@@ -140,6 +142,7 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
+            disabled={isSaving}
             aria-invalid={usernameError !== null}
             aria-describedby={usernameError ? 'username-error' : 'username-hint'}
             onChange={(event) => setUsername(event.target.value)}
@@ -165,6 +168,7 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
             type="email"
             value={email}
             autoComplete="email"
+            disabled={isSaving}
             aria-invalid={emailError !== null}
             aria-describedby={emailError ? 'email-error' : undefined}
             onChange={(event) => setEmail(event.target.value)}
@@ -182,6 +186,7 @@ export function EditProfile({ profile, onCancel, onSaved }: EditProfileProps) {
             id="preferredCurrency"
             name="preferredCurrency"
             value={preferredCurrency}
+            disabled={isSaving}
             onChange={(event) => setPreferredCurrency(event.target.value)}
           >
             {currencyOptions.map((option) => (

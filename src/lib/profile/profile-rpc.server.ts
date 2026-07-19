@@ -81,10 +81,15 @@ export async function getProfile({ accessToken }: { accessToken: string }): Prom
  */
 function conflictField(error: ConnectError): ConflictField {
   const message = error.rawMessage.toLowerCase()
-  if (message.includes('username')) {
+  const namesUsername = message.includes('username')
+  const namesEmail = message.includes('email')
+  // Only claim a field when the message implicates exactly one. A message naming both
+  // ("username or email is already taken") identifies neither, and picking the first
+  // match would pin the error to an input the user may not need to change at all.
+  if (namesUsername && !namesEmail) {
     return 'username'
   }
-  if (message.includes('email')) {
+  if (namesEmail && !namesUsername) {
     return 'email'
   }
   return 'unknown'

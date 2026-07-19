@@ -236,6 +236,17 @@ describe('updateProfile', () => {
     expect(result).toEqual({ status: 'alreadyExists', field: 'unknown' })
   })
 
+  it('falls back to unknown when the message names both fields at once', async () => {
+    // "username or email is already taken" implicates neither in particular. Taking the
+    // first keyword match would pin the error to the username input even when the email
+    // is the real conflict, so an ambiguous message must stay form-level.
+    updateServiceAnswers({ kind: 'alreadyExists', field: 'both' })
+
+    const result = await updateProfile({ accessToken: ACCESS_TOKEN, input: DRAFT })
+
+    expect(result).toEqual({ status: 'alreadyExists', field: 'unknown' })
+  })
+
   it('treats NotFound as a fault rather than a result the user can edit away', async () => {
     // A provisioned user always exists, so NotFound on update is the same broken
     // invariant getProfile guards against — thrown, not returned as a typed result.

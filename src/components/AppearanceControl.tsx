@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactElement } from 'react'
 import { ThemePreference, applyThemePreference, readThemePreference } from '../lib/theme/theme'
 
 /**
@@ -18,7 +19,7 @@ const OPTIONS = [
   { value: ThemePreference.Dark, label: 'Dark' },
 ] as const
 
-export function AppearanceControl() {
+export function AppearanceControl(): ReactElement {
   const [preference, setPreference] = useState<ThemePreference>(ThemePreference.System)
 
   // Reconcile with the persisted cookie once mounted — reading it during render would
