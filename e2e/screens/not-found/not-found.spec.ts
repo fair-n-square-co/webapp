@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { waitForHydration } from './support'
+import { waitForHydration } from '../../fixtures/hydration'
 
 // Unknown URLs render the NotFound screen at the root boundary, wrapped in its own
 // app shell so the visitor is never stranded on a bare error page.

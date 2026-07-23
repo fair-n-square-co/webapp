@@ -55,3 +55,46 @@ var dark=p==='dark'||(p!=='light'&&window.matchMedia('(prefers-color-scheme: dar
 document.documentElement.dataset.theme=dark?'dark':'light';
 }catch(e){}})();`
 }
+
+// A year: the appearance choice is a durable preference, not a session value.
+const THEME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
+
+/**
+ * Read the appearance preference the browser persisted. Client-only — it touches
+ * `document.cookie`, so callers must guard for SSR (there is no `document` there). An
+ * absent or unrecognised cookie means "system".
+ */
+export function readThemePreference(): ThemePreference {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${THEME_COOKIE_NAME}=([^;]*)`))
+  const raw = match?.[1]
+  if (!raw) {
+    return ThemePreference.System
+  }
+  // A cookie is attacker- and corruption-reachable, and `decodeURIComponent` throws a
+  // URIError on a malformed escape like '%2'. This runs in a mount effect, so letting
+  // it throw would take the whole screen down over a bad preference cookie. Falling
+  // back to 'system' matches what an absent cookie means — and what the pre-paint init
+  // script already does with its own try/catch.
+  try {
+    return parseThemePreference(decodeURIComponent(raw))
+  } catch {
+    return ThemePreference.System
+  }
+}
+
+/**
+ * Persist the appearance choice and apply it immediately, in the browser. Appearance
+ * is client-only (a cookie plus `data-theme`), never a server profile preference: the
+ * cookie lets the server stamp the right theme on the next SSR, and stamping
+ * `data-theme` now repaints without a round-trip. For "system" the live media query —
+ * the one thing the server cannot read — decides the concrete theme. Client-only:
+ * touches `document`/`window`, so it must run only from an event handler on the client.
+ */
+export function applyThemePreference(preference: ThemePreference): void {
+  document.cookie = `${THEME_COOKIE_NAME}=${encodeURIComponent(preference)}; path=/; max-age=${THEME_COOKIE_MAX_AGE_SECONDS}; samesite=lax`
+  const dark =
+    preference === ThemePreference.Dark ||
+    (preference !== ThemePreference.Light &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.dataset['theme'] = dark ? 'dark' : 'light'
+}
